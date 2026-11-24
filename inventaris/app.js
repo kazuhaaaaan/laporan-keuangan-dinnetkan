@@ -848,9 +848,22 @@ function initEvents() {
 
   const toggle = $('mobileToggle');
   const sidebar = $('sidebar');
+  const backdrop = $('sidebarBackdrop');
   const links = [...document.querySelectorAll('.nav-link')];
-  toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-  links.forEach((link) => link.addEventListener('click', () => sidebar.classList.remove('open')));
+
+  const setSidebar = (open) => {
+    sidebar.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
+    document.body.classList.toggle('nav-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+
+  toggle.addEventListener('click', () => setSidebar(!sidebar.classList.contains('open')));
+  backdrop.addEventListener('click', () => setSidebar(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setSidebar(false);
+  });
+  links.forEach((link) => link.addEventListener('click', () => setSidebar(false)));
 
   const sections = links.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
   const observer = new IntersectionObserver(

@@ -536,11 +536,23 @@ function initTransactionForm() {
 function initNavigation() {
   const toggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
   const allLinks = [...document.querySelectorAll('.nav-link')];
   const links = allLinks.filter((link) => link.getAttribute('href').startsWith('#'));
 
-  toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-  allLinks.forEach((link) => link.addEventListener('click', () => sidebar.classList.remove('open')));
+  const setSidebar = (open) => {
+    sidebar.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
+    document.body.classList.toggle('nav-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+
+  toggle.addEventListener('click', () => setSidebar(!sidebar.classList.contains('open')));
+  backdrop.addEventListener('click', () => setSidebar(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setSidebar(false);
+  });
+  allLinks.forEach((link) => link.addEventListener('click', () => setSidebar(false)));
 
   const targets = links.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
   const observer = new IntersectionObserver(
