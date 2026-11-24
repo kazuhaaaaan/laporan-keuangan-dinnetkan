@@ -298,10 +298,11 @@ function exportJournal() {
 function initNavigation() {
   const toggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
-  const links = [...document.querySelectorAll('.nav-link')];
+  const allLinks = [...document.querySelectorAll('.nav-link')];
+  const links = allLinks.filter((link) => link.getAttribute('href').startsWith('#'));
 
   toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-  links.forEach((link) => link.addEventListener('click', () => sidebar.classList.remove('open')));
+  allLinks.forEach((link) => link.addEventListener('click', () => sidebar.classList.remove('open')));
 
   const targets = links.map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
   const observer = new IntersectionObserver(
