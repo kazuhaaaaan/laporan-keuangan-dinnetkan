@@ -1,11 +1,30 @@
-const meta = REPORT_DATA.meta;
-const summary = REPORT_DATA.summary;
-const monthly = REPORT_DATA.monthly;
-const journal = REPORT_DATA.journal;
+let report = REPORT_DATA;
+let meta = report.meta;
+let summary = report.summary;
+let monthly = report.monthly;
+let journal = report.journal;
 const pageSize = 25;
 
 let filteredJournal = [];
 let currentPage = 1;
+
+function syncReport() {
+  report = refreshReportData();
+  meta = report.meta;
+  summary = report.summary;
+  monthly = report.monthly;
+  journal = report.journal;
+}
+
+function renderDashboard() {
+  initMeta();
+  renderKpis();
+  renderChart();
+  renderCosts();
+  renderComposition();
+  renderBalance();
+  applyFilters();
+}
 
 const moneyFormatter = new Intl.NumberFormat('id-ID', {
   style: 'currency',
@@ -62,8 +81,8 @@ function initMeta() {
 }
 
 function renderKpis() {
-  const latest = monthly[monthly.length - 1];
-  const previous = monthly[monthly.length - 2] || latest;
+  const latest = monthly[monthly.length - 1] || { revenue: 0, expense: 0, month: '—' };
+  const previous = monthly.length > 1 ? monthly[monthly.length - 2] : { revenue: 0, expense: 0, month: '—' };
   const margin = summary.pendapatan ? (summary.laba / summary.pendapatan) * 100 : 0;
 
   document.getElementById('kpiRevenue').textContent = money(summary.pendapatan);
@@ -76,6 +95,11 @@ function renderKpis() {
 }
 
 function renderChart() {
+  if (!monthly.length) {
+    document.getElementById('monthlyChart').innerHTML = '<p class="chart-empty">Belum ada transaksi. Isi lewat form input transaksi untuk melihat grafik.</p>';
+    return;
+  }
+
   const width = 1000;
   const height = 340;
   const padding = { top: 22, right: 18, bottom: 44, left: 68 };
@@ -121,24 +145,26 @@ function renderChart() {
 }
 
 function renderCosts() {
-  const ranked = [...REPORT_DATA.expenseAccounts].sort((a, b) => b.amount - a.amount).slice(0, 8);
+  const ranked = [...report.expenseAccounts].sort((a, b) => b.amount - a.amount).slice(0, 8);
   const total = summary.biaya || 1;
   const maximum = ranked[0]?.amount || 1;
 
-  document.getElementById('costCount').textContent = `${REPORT_DATA.expenseAccounts.length} akun biaya`;
-  document.getElementById('costRanking').innerHTML = ranked
-    .map((item, index) => {
-      const percent = (item.amount / total) * 100;
-      return `<div class="rank-item">
-        <span class="rank-number">${index + 1}</span>
-        <div class="rank-info">
-          <div class="rank-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-          <div class="rank-bar"><span style="width:${(item.amount / maximum) * 100}%"></span></div>
-        </div>
-        <div class="rank-value">${shortMoney(item.amount)}<span class="rank-percent">${percent.toFixed(1)}%</span></div>
-      </div>`;
-    })
-    .join('');
+  document.getElementById('costCount').textContent = `${report.expenseAccounts.length} akun biaya`;
+  document.getElementById('costRanking').innerHTML = ranked.length
+    ? ranked
+        .map((item, index) => {
+          const percent = (item.amount / total) * 100;
+          return `<div class="rank-item">
+            <span class="rank-number">${index + 1}</span>
+            <div class="rank-info">
+              <div class="rank-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+              <div class="rank-bar"><span style="width:${(item.amount / maximum) * 100}%"></span></div>
+            </div>
+            <div class="rank-value">${shortMoney(item.amount)}<span class="rank-percent">${percent.toFixed(1)}%</span></div>
+          </div>`;
+        })
+        .join('')
+    : '<p class="chart-empty">Belum ada biaya tercatat.</p>';
 }
 
 function renderComposition() {
@@ -171,8 +197,8 @@ function renderBalance() {
       .join('');
 
   const sum = (items) => items.reduce((total, item) => total + item.amount, 0);
-  const assets = REPORT_DATA.assets;
-  const liabilities = REPORT_DATA.liabilities;
+  const assets = report.assets;
+  const liabilities = report.liabilities;
 
   document.getElementById('assetBody').innerHTML = `${renderRows(assets)}<tr class="total-row"><td></td><td>Total Aset</td><td class="num right">${money(sum(assets))}</td></tr>`;
   document.getElementById('liabilityBody').innerHTML = `${renderRows(liabilities)}<tr class="total-row"><td></td><td>Total Liabilitas &amp; Ekuitas</td><td class="num right">${money(sum(liabilities))}</td></tr>`;
@@ -296,6 +322,127 @@ function exportJournal() {
   URL.revokeObjectURL(url);
 }
 
+function initTransactionForm() {
+  const form = document.getElementById('journalForm');
+  const debit = document.getElementById('txDebit');
+  const credit = document.getElementById('txCredit');
+  const item = document.getElementById('txItem');
+  const mutation = document.getElementById('txMutation');
+  const quantity = document.getElementById('txQuantity');
+  const amount = document.getElementById('txAmount');
+  const status = document.getElementById('formStatus');
+
+  ACCOUNTS.forEach((account) => {
+    [debit, credit].forEach((select) => {
+      const option = document.createElement('option');
+      option.value = account.code;
+      option.textContent = `${account.code} · ${account.name}`;
+      select.appendChild(option);
+    });
+  });
+
+  INVENTORY_ITEMS.forEach((product) => {
+    const option = document.createElement('option');
+    option.value = product.code;
+    option.textContent = `${product.code} · ${product.name}`;
+    item.appendChild(option);
+  });
+
+  const resetForm = () => {
+    form.reset();
+    document.getElementById('txDate').value = new Date().toISOString().slice(0, 10);
+    status.textContent = '';
+  };
+
+  const updateAmount = () => {
+    const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
+    const qty = Number(quantity.value);
+    if (product && mutation.value && qty > 0) {
+      amount.value = (product.price * qty).toFixed(2);
+    }
+  };
+
+  [item, mutation, quantity].forEach((element) => {
+    element.addEventListener('input', updateAmount);
+    element.addEventListener('change', updateAmount);
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const date = document.getElementById('txDate').value;
+    const description = document.getElementById('txDescription').value.trim();
+    const debitCode = debit.value;
+    const creditCode = credit.value;
+    const nominal = Number(amount.value);
+    const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
+    const mutationType = mutation.value;
+    const qty = Number(quantity.value);
+
+    try {
+      if (!date) throw new Error('Tanggal wajib diisi.');
+      if (!description) throw new Error('Keterangan wajib diisi.');
+      if (!debitCode || !creditCode) throw new Error('Pilih akun debit dan kredit.');
+      if (debitCode === creditCode) throw new Error('Akun debit dan kredit harus berbeda.');
+      if (!Number.isFinite(nominal) || nominal <= 0) throw new Error('Nominal harus lebih dari 0.');
+
+      const usesStock = debitCode === '1.2.13' || creditCode === '1.2.13';
+      if (usesStock && (!product || !mutationType || qty <= 0)) {
+        throw new Error('Transaksi PERSEDIAAN butuh barang, mutasi, dan jumlah.');
+      }
+      if (!usesStock && mutationType) {
+        throw new Error('Mutasi barang butuh akun PERSEDIAAN (1.2.13).');
+      }
+      if (mutationType === 'in' && debitCode !== '1.2.13') {
+        throw new Error('Mutasi masuk harus dibukukan ke debit PERSEDIAAN.');
+      }
+      if (mutationType === 'out' && creditCode !== '1.2.13') {
+        throw new Error('Mutasi keluar harus dibukukan ke kredit PERSEDIAAN.');
+      }
+
+      const lines = [
+        { code: debitCode, debit: nominal },
+        { code: creditCode, kredit: nominal },
+      ];
+      if (mutationType) {
+        lines.find((line) => line.code === '1.2.13').mutation = {
+          item: product.code,
+          type: mutationType,
+          quantity: qty,
+        };
+      }
+
+      addJournalEntry({
+        date,
+        description,
+        ref: `JRN-${Date.now().toString(36).toUpperCase()}`,
+        lines,
+      });
+      syncReport();
+      renderDashboard();
+      resetForm();
+      status.textContent = `Tersimpan. Jurnal berisi ${loadJournalEntries().length} transaksi.`;
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  });
+
+  document.getElementById('sampleBtn').addEventListener('click', () => {
+    loadSampleJournal();
+    syncReport();
+    renderDashboard();
+    status.textContent = `Data contoh dimuat. Jurnal berisi ${loadJournalEntries().length} transaksi.`;
+  });
+
+  document.getElementById('clearJournalBtn').addEventListener('click', () => {
+    clearJournalEntries();
+    syncReport();
+    renderDashboard();
+    status.textContent = 'Jurnal dikosongkan.';
+  });
+
+  resetForm();
+}
+
 function initNavigation() {
   const toggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
@@ -325,3 +472,4 @@ renderComposition();
 renderBalance();
 initFilters();
 initNavigation();
+initTransactionForm();

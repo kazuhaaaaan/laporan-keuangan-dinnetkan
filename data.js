@@ -23,7 +23,7 @@ const INVENTORY_ITEMS = [
   { code: 'BRG-003', name: 'Splitter ODP 1:8', category: 'Jaringan', unit: 'pcs', location: 'Gudang B', price: 85000, minStock: 5 },
 ];
 
-const JOURNAL_ENTRIES = [
+const SAMPLE_JOURNAL_ENTRIES = [
   {
     date: '2025-01-01',
     description: 'SALDO AWAL MODAL',
@@ -290,16 +290,16 @@ function buildInventory(entries, itemDefinitions) {
 
 function buildMonthly(accounts, entries) {
   const types = new Map(accounts.map((account) => [account.code, account.type]));
-  const activeMonths = new Set(entries.map((entry) => entry.date.slice(0, 7)));
+  const activeMonths = new Set(entries.map((entry) => entry.date.slice(5, 7)));
   const monthly = [];
 
   MONTH_NAMES.forEach((month, index) => {
-    const prefix = `2025-${String(index + 1).padStart(2, '0')}`;
-    if (!activeMonths.has(prefix)) return;
+    const monthNumber = String(index + 1).padStart(2, '0');
+    if (!activeMonths.has(monthNumber)) return;
     let revenue = 0;
     let expense = 0;
     entries
-      .filter((entry) => entry.date.startsWith(prefix))
+      .filter((entry) => entry.date.slice(5, 7) === monthNumber)
       .forEach((entry) => {
         entry.lines.forEach((line) => {
           const type = types.get(line.code);
@@ -313,9 +313,9 @@ function buildMonthly(accounts, entries) {
   return monthly;
 }
 
-function buildReportData() {
-  const trialBalance = buildTrialBalance(ACCOUNTS, JOURNAL_ENTRIES);
-  const inventory = buildInventory(JOURNAL_ENTRIES, INVENTORY_ITEMS);
+function buildReportData(entries) {
+  const trialBalance = buildTrialBalance(ACCOUNTS, entries);
+  const inventory = buildInventory(entries, INVENTORY_ITEMS);
   const totalOf = (type) =>
     trialBalance.rows.filter((row) => row.type === type).reduce((sum, row) => sum + row.saldo, 0);
   const pendapatan = totalOf('pendapatan');
@@ -341,19 +341,19 @@ function buildReportData() {
   return {
     meta: {
       title: 'Laporan Keuangan Dinnetkan',
-      period: '2025',
+      period: entries.length ? entries[entries.length - 1].date.slice(0, 4) : '2025',
       source: SOURCE_SHEET,
-      generatedAt: '2026-11-24',
+      generatedAt: new Date().toISOString().slice(0, 10),
       isDummy: true,
-      note: 'Data contoh: KODE AKUN → JURNAL UMUM → NERACA JALAN → LABA RUGI / NERACA',
+      note: 'Isi jurnal umum lewat form input; laporan dihitung ulang otomatis.',
     },
     summary: { pendapatan, biaya, laba, kas },
-    monthly: buildMonthly(ACCOUNTS, JOURNAL_ENTRIES),
+    monthly: buildMonthly(ACCOUNTS, entries),
     revenueAccounts: group('pendapatan'),
     expenseAccounts: group('biaya').sort((a, b) => b.amount - a.amount),
     assets,
     liabilities,
-    journal: buildJournalRows(ACCOUNTS, JOURNAL_ENTRIES),
+    journal: buildJournalRows(ACCOUNTS, entries),
     trialBalance: {
       rows: trialBalance.rows.map((row) => ({
         code: row.code,
@@ -381,4 +381,61 @@ function buildReportData() {
   };
 }
 
-const REPORT_DATA = buildReportData();
+const FINANCE_STORAGE_KEY = 'dinnetkan-finance-journal-v1';
+
+function loadJournalEntries() {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(FINANCE_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) => entry && typeof entry.date === 'string' && Array.isArray(entry.lines));
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveJournalEntries(entries) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    return;
+  }
+}
+
+function replaceJournalEntries(entries) {
+  const report = buildReportData(entries);
+  saveJournalEntries(entries);
+  REPORT_DATA = report;
+  return report;
+}
+
+function addJournalEntry(entry) {
+  if (!entry || typeof entry.date !== 'string' || !Array.isArray(entry.lines)) {
+    throw new Error('Format transaksi tidak valid.');
+  }
+  const entries = loadJournalEntries();
+  entries.push(entry);
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+  return replaceJournalEntries(entries);
+}
+
+function loadSampleJournal() {
+  return replaceJournalEntries(
+    SAMPLE_JOURNAL_ENTRIES.map((entry) => ({ ...entry, lines: entry.lines.map((line) => ({ ...line })) })),
+  );
+}
+
+function clearJournalEntries() {
+  return replaceJournalEntries([]);
+}
+
+function refreshReportData() {
+  REPORT_DATA = buildReportData(loadJournalEntries());
+  return REPORT_DATA;
+}
+
+let REPORT_DATA;
+REPORT_DATA = refreshReportData();

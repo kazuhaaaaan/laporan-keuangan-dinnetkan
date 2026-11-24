@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'dinnetkan-inventory-v1';
+const JOURNAL_SYNC_KEY = 'dinnetkan-inventory-journal-sync-v1';
 const $ = (id) => document.getElementById(id);
 
 const numberFormatter = new Intl.NumberFormat('id-ID');
@@ -30,10 +31,19 @@ function seedState() {
   };
 }
 
+function journalSignature() {
+  if (typeof REPORT_DATA === 'undefined') return 'no-report';
+  return `${REPORT_DATA.journal.length}:${REPORT_DATA.inventory.transactions.length}`;
+}
+
 function loadState() {
   try {
+    const signature = journalSignature();
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seedState();
+    if (!raw || localStorage.getItem(JOURNAL_SYNC_KEY) !== signature) {
+      localStorage.setItem(JOURNAL_SYNC_KEY, signature);
+      return seedState();
+    }
     const parsed = JSON.parse(raw);
     return {
       items: Array.isArray(parsed.items) ? parsed.items : [],

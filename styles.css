@@ -464,6 +464,27 @@ h3 {
   overflow-x: auto;
 }
 
+.chart-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 48px 12px;
+  text-align: center;
+}
+
+.form-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.form-actions span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .chart-wrap svg {
   display: block;
   min-width: 760px;

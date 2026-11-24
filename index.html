@@ -30,6 +30,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
         Analisis
       </a>
+      <a class="nav-link" href="#input-transaksi">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Input Data
+      </a>
       <a class="nav-link" href="#jurnal">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M12 9h5M12 13h5" /></svg>
         Jurnal Umum
@@ -47,7 +51,7 @@
     <div class="sidebar-footer">
       <div class="source-badge">
         <span class="dot"></span>
-        <span>Sumber: data dummy</span>
+        <span>Sumber: input lokal</span>
       </div>
       <a class="source-link" id="sourceLink" href="#" target="_blank" rel="noreferrer">
         Buka spreadsheet asli
@@ -167,6 +171,63 @@
         </div>
         <div class="insight" id="cashInsight"></div>
       </article>
+    </section>
+
+    <section class="panel" id="input-transaksi">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">INPUT DATA</p>
+          <h2>Tambah Transaksi</h2>
+          <p class="panel-sub">Jurnal berimbang dengan satu akun debit dan satu akun kredit. Mutasi barang opsional.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-ghost" id="sampleBtn" type="button">Muat contoh</button>
+          <button class="btn btn-ghost" id="clearJournalBtn" type="button">Kosongkan</button>
+        </div>
+      </div>
+
+      <form class="filters" id="journalForm">
+        <label class="field">
+          <span>Tanggal</span>
+          <input type="date" id="txDate" required />
+        </label>
+        <label class="field search-field">
+          <span>Keterangan</span>
+          <input type="text" id="txDescription" placeholder="Contoh: pembayaran internet" autocomplete="off" required />
+        </label>
+        <label class="field">
+          <span>Akun Debet</span>
+          <select id="txDebit" required></select>
+        </label>
+        <label class="field">
+          <span>Akun Kredit</span>
+          <select id="txCredit" required></select>
+        </label>
+        <label class="field">
+          <span>Nominal (Rp)</span>
+          <input type="number" id="txAmount" min="1" step="0.01" required />
+        </label>
+        <label class="field">
+          <span>Barang</span>
+          <select id="txItem"><option value="">Tanpa mutasi barang</option></select>
+        </label>
+        <label class="field">
+          <span>Mutasi</span>
+          <select id="txMutation">
+            <option value="">Tidak ada</option>
+            <option value="in">Masuk</option>
+            <option value="out">Keluar</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Jumlah barang</span>
+          <input type="number" id="txQuantity" min="1" step="1" />
+        </label>
+      </form>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit" form="journalForm">Simpan transaksi</button>
+        <span id="formStatus" role="status"></span>
+      </div>
     </section>
 
     <section class="panel" id="jurnal">
