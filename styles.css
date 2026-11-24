@@ -998,6 +998,12 @@ h3 {
     min-width: 0;
   }
 
+  .panel-head > .panel-meta,
+  #depSummary {
+    max-width: 100%;
+    text-align: left;
+  }
+
   input,
   select,
   textarea {

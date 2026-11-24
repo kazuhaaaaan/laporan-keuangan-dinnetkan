@@ -389,7 +389,7 @@ function renderDepreciation() {
     $('depStart').value = plan.rule.start;
     $('depEnd').value = plan.rule.end;
   }
-  $('depSummary').textContent = `Harga awal ${money(plan.base)} · ${plan.rows.length} kali penurunan · Harga akhir ${money(plan.finalPrice)}`;
+  $('depSummary').textContent = `${item.code} · ${item.name} · Harga awal ${money(plan.base)} · ${plan.rows.length} kali penurunan · Harga akhir ${money(plan.finalPrice)}`;
 
   if (!plan.rule || !plan.rows.length) {
     result.innerHTML = `<p class="chart-empty">${
@@ -398,7 +398,7 @@ function renderDepreciation() {
     return;
   }
 
-  result.innerHTML = `<table class="data-table">
+  result.innerHTML = `<div class="table-wrap"><table class="data-table">
     <thead><tr>
       <th class="right">#</th>
       <th>Periode penurunan</th>
@@ -418,9 +418,9 @@ function renderDepreciation() {
           </tr>`,
         )
         .join('')}
-      <tr class="total-row dep-final"><td></td><td>Harga akhir barang</td><td class="num right">${money(plan.base)}</td><td class="num right">${money(plan.total)}</td><td class="num right">${money(plan.finalPrice)}</td></tr>
+      <tr class="total-row dep-final"><td></td><td>Harga akhir ${escapeHtml(item.name)}</td><td class="num right">${money(plan.base)}</td><td class="num right">${money(plan.total)}</td><td class="num right">${money(plan.finalPrice)}</td></tr>
     </tbody>
-  </table>`;
+  </table></div>`;
 }
 
 function updateAvailableStock() {

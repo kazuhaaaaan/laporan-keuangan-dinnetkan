@@ -247,6 +247,7 @@
 
 .action-cell {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
 }
@@ -271,6 +272,18 @@
 
 .depreciation-result {
   margin-top: 18px;
+  min-width: 0;
+}
+
+.depreciation-result .table-wrap {
+  overflow-x: auto;
+}
+
+#depSummary {
+  min-width: 0;
+  max-width: min(460px, 100%);
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .dep-final td {
