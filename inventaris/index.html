@@ -9,12 +9,18 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <button class="mobile-toggle" id="mobileToggle" aria-label="Buka navigasi" aria-controls="sidebar" aria-expanded="false">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-  </button>
+  <div class="mobile-topbar">
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Buka navigasi" aria-controls="sidebar" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+    </button>
+    <span class="mobile-topbar-title">Inventaris</span>
+  </div>
   <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
   <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="sidebarClose" aria-label="Tutup navigasi">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </button>
     <a class="brand" href="#ringkasan">
       <span class="brand-mark">I</span>
       <span>

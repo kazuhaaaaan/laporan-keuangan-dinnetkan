@@ -849,6 +849,7 @@ function initEvents() {
   const toggle = $('mobileToggle');
   const sidebar = $('sidebar');
   const backdrop = $('sidebarBackdrop');
+  const closeButton = $('sidebarClose');
   const links = [...document.querySelectorAll('.nav-link')];
 
   const setSidebar = (open) => {
@@ -859,6 +860,7 @@ function initEvents() {
   };
 
   toggle.addEventListener('click', () => setSidebar(!sidebar.classList.contains('open')));
+  closeButton.addEventListener('click', () => setSidebar(false));
   backdrop.addEventListener('click', () => setSidebar(false));
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') setSidebar(false);

@@ -180,19 +180,28 @@ button {
   font-size: 11px;
 }
 
-.mobile-toggle {
+.mobile-topbar {
   display: none;
-  position: fixed;
-  top: 16px;
-  left: 16px;
+}
+
+.mobile-toggle,
+.sidebar-close {
+  display: none;
+  place-items: center;
   width: 42px;
   height: 42px;
   border: 0;
   border-radius: 12px;
-  background: var(--navy);
+  background: transparent;
   color: #fff;
-  z-index: 30;
   cursor: pointer;
+}
+
+.mobile-topbar-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .main {
@@ -897,9 +906,36 @@ h3 {
     overflow: hidden;
   }
 
+  .mobile-topbar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    padding: 0 16px;
+    background: var(--navy);
+    box-shadow: 0 6px 18px rgba(9, 16, 30, 0.16);
+  }
+
+  body.nav-open .mobile-topbar {
+    z-index: 18;
+  }
+
   .mobile-toggle {
     display: grid;
-    place-items: center;
+  }
+
+  .sidebar-close {
+    display: grid;
+    position: absolute;
+    top: 20px;
+    right: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .sidebar {
@@ -932,7 +968,11 @@ h3 {
 
   .main {
     margin-left: 0;
-    padding: 78px 16px 24px;
+    padding: 24px 16px 24px;
+  }
+
+  .panel {
+    scroll-margin-top: 72px;
   }
 
   .page-header {
@@ -1011,6 +1051,8 @@ h3 {
   }
 
   .sidebar,
+  .sidebar-backdrop,
+  .mobile-topbar,
   .mobile-toggle,
   .header-actions,
   .filters,

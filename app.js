@@ -537,6 +537,7 @@ function initNavigation() {
   const toggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebarBackdrop');
+  const closeButton = document.getElementById('sidebarClose');
   const allLinks = [...document.querySelectorAll('.nav-link')];
   const links = allLinks.filter((link) => link.getAttribute('href').startsWith('#'));
 
@@ -548,6 +549,7 @@ function initNavigation() {
   };
 
   toggle.addEventListener('click', () => setSidebar(!sidebar.classList.contains('open')));
+  closeButton.addEventListener('click', () => setSidebar(false));
   backdrop.addEventListener('click', () => setSidebar(false));
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') setSidebar(false);
