@@ -426,13 +426,6 @@ function initTransactionForm() {
     }
   });
 
-  document.getElementById('sampleBtn').addEventListener('click', () => {
-    loadSampleJournal();
-    syncReport();
-    renderDashboard();
-    status.textContent = `Data contoh dimuat. Jurnal berisi ${loadJournalEntries().length} transaksi.`;
-  });
-
   document.getElementById('clearJournalBtn').addEventListener('click', () => {
     clearJournalEntries();
     syncReport();

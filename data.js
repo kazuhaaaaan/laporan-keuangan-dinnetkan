@@ -23,176 +23,6 @@ const INVENTORY_ITEMS = [
   { code: 'BRG-003', name: 'Splitter ODP 1:8', category: 'Jaringan', unit: 'pcs', location: 'Gudang B', price: 85000, minStock: 5 },
 ];
 
-const SAMPLE_JOURNAL_ENTRIES = [
-  {
-    date: '2025-01-01',
-    description: 'SALDO AWAL MODAL',
-    lines: [
-      { code: '2.1.25', kredit: 50000000 },
-      { code: '1.1.11', debit: 50000000 },
-    ],
-  },
-  {
-    date: '2025-01-05',
-    description: 'Pembayaran registrasi pelanggan',
-    lines: [
-      { code: '1.1.11', debit: 11000000 },
-      { code: '3.1.11', kredit: 11000000 },
-    ],
-  },
-  {
-    date: '2025-01-10',
-    description: 'Pembelian router untuk persediaan',
-    ref: 'PBL-2025-001',
-    lines: [
-      { code: '1.2.13', debit: 12500000, mutation: { item: 'BRG-001', type: 'in', quantity: 10 } },
-      { code: '1.1.11', kredit: 12500000 },
-    ],
-  },
-  {
-    date: '2025-01-15',
-    description: 'Pemakaian router untuk instalasi pelanggan',
-    ref: 'INST-2025-001',
-    lines: [
-      { code: '5.1.26', debit: 2500000 },
-      { code: '1.2.13', kredit: 2500000, mutation: { item: 'BRG-001', type: 'out', quantity: 2 } },
-    ],
-  },
-  {
-    date: '2025-01-20',
-    description: 'Pembelian kabel FO secara kredit',
-    ref: 'PBL-2025-002',
-    lines: [
-      { code: '1.2.13', debit: 5000000, mutation: { item: 'BRG-002', type: 'in', quantity: 10 } },
-      { code: '2.1.11', kredit: 5000000 },
-    ],
-  },
-  {
-    date: '2025-01-25',
-    description: 'Pelunasan hutang supplier',
-    lines: [
-      { code: '2.1.11', debit: 5000000 },
-      { code: '1.1.11', kredit: 5000000 },
-    ],
-  },
-  {
-    date: '2025-01-31',
-    description: 'Pembayaran gaji karyawan',
-    lines: [
-      { code: '5.1.11', debit: 9000000 },
-      { code: '1.1.11', kredit: 9000000 },
-    ],
-  },
-  {
-    date: '2025-02-01',
-    description: 'Pembelian peralatan dan mesin',
-    lines: [
-      { code: '1.2.25', debit: 8000000 },
-      { code: '1.1.11', kredit: 8000000 },
-    ],
-  },
-  {
-    date: '2025-02-03',
-    description: 'Pembayaran pemakaian internet mitra',
-    lines: [
-      { code: '1.1.11', debit: 18500000 },
-      { code: '3.1.11', kredit: 18500000 },
-    ],
-  },
-  {
-    date: '2025-02-05',
-    description: 'Pembayaran sewa jaringan',
-    lines: [
-      { code: '5.1.18', debit: 7750000 },
-      { code: '1.1.11', kredit: 7750000 },
-    ],
-  },
-  {
-    date: '2025-02-10',
-    description: 'Pemakaian kabel FO untuk instalasi',
-    ref: 'INST-2025-002',
-    lines: [
-      { code: '5.1.26', debit: 1500000 },
-      { code: '1.2.13', kredit: 1500000, mutation: { item: 'BRG-002', type: 'out', quantity: 3 } },
-    ],
-  },
-  {
-    date: '2025-02-14',
-    description: 'Pembelian splitter ODP',
-    ref: 'PBL-2025-003',
-    lines: [
-      { code: '1.2.13', debit: 850000, mutation: { item: 'BRG-003', type: 'in', quantity: 10 } },
-      { code: '1.1.10', kredit: 850000 },
-    ],
-  },
-  {
-    date: '2025-02-20',
-    description: 'Pembayaran listrik kantor',
-    lines: [
-      { code: '5.1.24', debit: 1200000 },
-      { code: '1.1.11', kredit: 1200000 },
-    ],
-  },
-  {
-    date: '2025-02-28',
-    description: 'Pembayaran sewa tempat',
-    lines: [
-      { code: '5.1.44', debit: 6000000 },
-      { code: '1.1.11', kredit: 6000000 },
-    ],
-  },
-  {
-    date: '2025-03-05',
-    description: 'Penerimaan pendapatan jasa',
-    lines: [
-      { code: '1.1.11', debit: 22000000 },
-      { code: '3.1.11', kredit: 22000000 },
-    ],
-  },
-  {
-    date: '2025-03-08',
-    description: 'Penerimaan jasa setting MikroTik',
-    lines: [
-      { code: '1.1.10', debit: 1500000 },
-      { code: '3.1.19', kredit: 1500000 },
-    ],
-  },
-  {
-    date: '2025-03-10',
-    description: 'Pemakaian splitter ODP untuk pelanggan',
-    ref: 'INST-2025-003',
-    lines: [
-      { code: '5.1.26', debit: 425000 },
-      { code: '1.2.13', kredit: 425000, mutation: { item: 'BRG-003', type: 'out', quantity: 5 } },
-    ],
-  },
-  {
-    date: '2025-03-15',
-    description: 'Pembelian router tambahan',
-    ref: 'PBL-2025-004',
-    lines: [
-      { code: '1.2.13', debit: 3750000, mutation: { item: 'BRG-001', type: 'in', quantity: 3 } },
-      { code: '1.1.11', kredit: 3750000 },
-    ],
-  },
-  {
-    date: '2025-03-20',
-    description: 'Biaya administrasi bank',
-    lines: [
-      { code: '5.1.56', debit: 25000 },
-      { code: '1.1.11', kredit: 25000 },
-    ],
-  },
-  {
-    date: '2025-03-31',
-    description: 'Pembayaran gaji karyawan',
-    lines: [
-      { code: '5.1.11', debit: 9000000 },
-      { code: '1.1.11', kredit: 9000000 },
-    ],
-  },
-];
-
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 function buildTrialBalance(accounts, entries) {
@@ -381,7 +211,7 @@ function buildReportData(entries) {
   };
 }
 
-const FINANCE_STORAGE_KEY = 'dinnetkan-finance-journal-v1';
+const FINANCE_STORAGE_KEY = 'dinnetkan-finance-journal-v2';
 
 function loadJournalEntries() {
   if (typeof localStorage === 'undefined') return [];
@@ -420,12 +250,6 @@ function addJournalEntry(entry) {
   entries.push(entry);
   entries.sort((a, b) => a.date.localeCompare(b.date));
   return replaceJournalEntries(entries);
-}
-
-function loadSampleJournal() {
-  return replaceJournalEntries(
-    SAMPLE_JOURNAL_ENTRIES.map((entry) => ({ ...entry, lines: entry.lines.map((line) => ({ ...line })) })),
-  );
 }
 
 function clearJournalEntries() {
