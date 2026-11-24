@@ -421,10 +421,11 @@ function initTransactionForm() {
   const status = document.getElementById('formStatus');
 
   ACCOUNTS.forEach((account) => {
+    const sideLabel = account.side === 'debet' ? 'Debet' : 'Kredit';
     [debit, credit].forEach((select) => {
       const option = document.createElement('option');
       option.value = account.code;
-      option.textContent = `${account.code} · ${account.name}`;
+      option.textContent = `${account.code} · ${account.name} · normal ${sideLabel}`;
       select.appendChild(option);
     });
   });
@@ -471,6 +472,14 @@ function initTransactionForm() {
       if (!description) throw new Error('Keterangan wajib diisi.');
       if (!debitCode || !creditCode) throw new Error('Pilih akun debit dan kredit.');
       if (debitCode === creditCode) throw new Error('Akun debit dan kredit harus berbeda.');
+      const debitAccount = ACCOUNTS.find((account) => account.code === debitCode);
+      const creditAccount = ACCOUNTS.find((account) => account.code === creditCode);
+      if (debitAccount?.side === 'kredit') {
+        throw new Error(`${debitAccount.code} ${debitAccount.name} normalnya di Kredit. Pindah ke kolom Akun Kredit.`);
+      }
+      if (creditAccount?.side === 'debet') {
+        throw new Error(`${creditAccount.code} ${creditAccount.name} normalnya di Debet. Pindah ke kolom Akun Debet.`);
+      }
       if (!Number.isFinite(nominal) || nominal <= 0) throw new Error('Nominal harus lebih dari 0.');
 
       const usesStock = debitCode === '1.2.13' || creditCode === '1.2.13';
