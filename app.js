@@ -47,9 +47,10 @@ function formatDate(value) {
   return dateFormatter.format(new Date(`${value}T00:00:00`));
 }
 
-function trend(current, previous) {
+function trend(current, previous, previousMonth) {
+  if (!previous) return '—';
   const percent = ((current - previous) / previous) * 100;
-  return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}% vs Nov`;
+  return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}% vs ${previousMonth}`;
 }
 
 function initMeta() {
@@ -61,16 +62,16 @@ function initMeta() {
 }
 
 function renderKpis() {
-  const december = monthly[11];
-  const november = monthly[10];
+  const latest = monthly[monthly.length - 1];
+  const previous = monthly[monthly.length - 2] || latest;
   const margin = summary.pendapatan ? (summary.laba / summary.pendapatan) * 100 : 0;
 
   document.getElementById('kpiRevenue').textContent = money(summary.pendapatan);
   document.getElementById('kpiExpense').textContent = money(summary.biaya);
   document.getElementById('kpiProfit').textContent = money(summary.laba);
   document.getElementById('kpiCash').textContent = money(summary.kas);
-  document.getElementById('revenueTrend').textContent = trend(december.revenue, november.revenue);
-  document.getElementById('expenseTrend').textContent = trend(december.expense, november.expense);
+  document.getElementById('revenueTrend').textContent = trend(latest.revenue, previous.revenue, previous.month);
+  document.getElementById('expenseTrend').textContent = trend(latest.expense, previous.expense, previous.month);
   document.getElementById('marginTag').textContent = `MARGIN ${margin.toFixed(2)}%`;
 }
 

@@ -7,8 +7,10 @@ const shortDateFormatter = new Intl.DateTimeFormat('id-ID', { day: '2-digit', mo
 const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
 
 let state = loadState();
-let period = 'day';
-let selectedDate = todayISO();
+let period = state.transactions.length ? 'month' : 'day';
+let selectedDate = state.transactions.length
+  ? state.transactions.reduce((latest, transaction) => (transaction.date > latest ? transaction.date : latest), state.transactions[0].date)
+  : todayISO();
 let editingItemId = null;
 let stockItemId = '';
 let itemQuery = '';
@@ -17,10 +19,21 @@ function emptyState() {
   return { items: [], transactions: [] };
 }
 
+function seedState() {
+  const inventory = typeof REPORT_DATA !== 'undefined' ? REPORT_DATA.inventory : null;
+  if (!inventory || !Array.isArray(inventory.items) || !Array.isArray(inventory.transactions)) {
+    return emptyState();
+  }
+  return {
+    items: inventory.items.map((item) => ({ ...item })),
+    transactions: inventory.transactions.map((transaction) => ({ ...transaction })),
+  };
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyState();
+    if (!raw) return seedState();
     const parsed = JSON.parse(raw);
     return {
       items: Array.isArray(parsed.items) ? parsed.items : [],
