@@ -1,20 +1,130 @@
 const SOURCE_SHEET = 'https://docs.google.com/spreadsheets/d/1yMhC0C7REAkRvO8MD9RI-yeqwhC5vBhLm0Tul5CEG_Q/edit?usp=drivesdk';
 
 const ACCOUNTS = [
-  { code: '1.1.10', name: 'KAS KECIL', side: 'debet', report: 'neraca', type: 'kas' },
-  { code: '1.1.11', name: 'BANK BCA DINETKAN', side: 'debet', report: 'neraca', type: 'kas' },
-  { code: '1.2.13', name: 'PERSEDIAAN', side: 'debet', report: 'neraca', type: 'aset' },
-  { code: '1.2.25', name: 'PERALATAN DAN MESIN', side: 'debet', report: 'neraca', type: 'aset' },
-  { code: '2.1.11', name: 'HUTANG PEMBELIAN BARANG DAGANG', side: 'kredit', report: 'neraca', type: 'liabilitas' },
-  { code: '2.1.25', name: 'MODAL', side: 'kredit', report: 'neraca', type: 'ekuitas' },
-  { code: '3.1.11', name: 'PENDAPATAN PENJUALAN JASA', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
-  { code: '3.1.19', name: 'PENDAPATAN LAIN', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
-  { code: '5.1.11', name: 'BIAYA GAJI PEGAWAI', side: 'debet', report: 'laba-rugi', type: 'biaya' },
-  { code: '5.1.18', name: 'BIAYA SEWA JARINGAN', side: 'debet', report: 'laba-rugi', type: 'biaya' },
-  { code: '5.1.24', name: 'BIAYA LISTRIK', side: 'debet', report: 'laba-rugi', type: 'biaya' },
-  { code: '5.1.26', name: 'BIAYA INVENTARIS KANTOR', side: 'debet', report: 'laba-rugi', type: 'biaya' },
-  { code: '5.1.44', name: 'BIAYA SEWA TEMPAT', side: 'debet', report: 'laba-rugi', type: 'biaya' },
-  { code: '5.1.56', name: 'BIAYA ADMINISTRASI BANK', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '1.1.10', name: 'KAS KECIL', helper: '1.1.10', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.11', name: 'BANK BCA DINETKAN', helper: '1.1.11', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.12', name: 'DUITKU', helper: '1.1.12', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.13', name: 'BANK MANDIRI DINETKAN', helper: '1.1.13', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.14', name: 'BANK', helper: '1.1.14', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.15', name: 'INVESTASI', helper: '1.1.45', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.16', name: 'PIUTANG PENJUALAN', helper: '1.1.47', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.17', name: 'PIUTANG PENJUALAN NON LANCAR', helper: '1.1.48', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.18', name: 'PIUTANG USAHA', helper: '1.1.52', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.19', name: 'PIUTANG PEMEGANG SAHAM', helper: '1.1.54', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.20', name: 'PIUTANG KARYAWAN', helper: '1.1.55', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.21', name: 'PIUTANG NON-OPERASIONAL', helper: '1.1.59', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.1.22', name: 'PIUTANG ONGKIR LAINNYA', helper: '1.1.60', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.10', name: 'BIAYA DIBAYAR DIMUKA', helper: '1.2.10', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.11', name: 'ASURANSI DIBAYAR DIMUKA', helper: '1.2.11', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.12', name: 'DANA DEPOSIT DI SUPPLIER', helper: '1.2.12', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.13', name: 'PERSEDIAAN', helper: '1.2.13', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.14', name: 'PERSEDIAAN BARANG DAGANG', helper: '1.2.14', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.15', name: 'AKTIVA TETAP', helper: '1.2.15', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.16', name: 'TANAH', helper: '1.2.16', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.17', name: 'BANGUNAN', helper: '1.2.17', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.18', name: 'AK. PENYUSUTAN BANGUNAN', helper: '1.2.18', side: 'kredit', report: 'neraca', type: 'aset' },
+  { code: '1.2.19', name: 'KENDARAAN MOBIL', helper: '1.2.19', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.20', name: 'AK. PENYUSUTAN KENDARAAN RODA 4', helper: '1.2.20', side: 'kredit', report: 'neraca', type: 'aset' },
+  { code: '1.2.21', name: 'KENDARAAN MOTOR', helper: '1.2.21', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.22', name: 'AK. PENYUSUTAN KENDARAAN RODA 2', helper: '1.2.22', side: 'kredit', report: 'neraca', type: 'aset' },
+  { code: '1.2.23', name: 'INVENTARIS KANTOR', helper: '1.2.23', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.24', name: 'AK. PENYUSUTAN INVENTARIS KANTOR', helper: '1.2.24', side: 'kredit', report: 'neraca', type: 'aset' },
+  { code: '1.2.25', name: 'PERALATAN DAN MESIN', helper: '1.2.25', side: 'debet', report: 'neraca', type: 'aset' },
+  { code: '1.2.26', name: 'AK. PENYUSUTAN PERALATAN DAN MESIN', helper: '1.2.26', side: 'kredit', report: 'neraca', type: 'aset' },
+  { code: '2.1.10', name: 'HUTANG BANK', helper: '2.1.10', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.11', name: 'HUTANG PEMBELIAN BARANG DAGANG', helper: '2.1.11', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.12', name: 'PENDAPATAN DITERIMA DIMUKA', helper: '2.1.12', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.13', name: 'DEPOSIT PELANGGAN', helper: '2.1.13', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.14', name: 'TITIPAN - TITIPAN', helper: '2.1.14', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.15', name: 'TITIPAN BIAYA - THR', helper: '2.1.15', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.16', name: 'TITIPAN BIAYA - MAKAN', helper: '2.1.16', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.17', name: 'TITIPAN BIAYA - ASURANSI KETENAGAKERJAAN', helper: '2.1.17', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.18', name: 'TITIPAN BIAYA - ASURANSI KESEHATAN', helper: '2.1.18', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.19', name: 'TITIPAN BIAYA - HIBURAN & REKREASI', helper: '2.1.19', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.20', name: 'TITIPAN BIAYA - PPN , BHP & USO', helper: '2.1.20', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.21', name: 'TITIPAN BIAYA - BIAYA', helper: '2.1.21', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.22', name: 'TITIPAN LAINNYA', helper: '2.1.22', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.23', name: 'TITIPAN ONGKIR', helper: '2.1.23', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.24', name: 'TITIPAN PIHAK KETIGA', helper: '2.1.24', side: 'kredit', report: 'neraca', type: 'liabilitas' },
+  { code: '2.1.25', name: 'MODAL', helper: '2.1.25', side: 'kredit', report: 'neraca', type: 'ekuitas' },
+  { code: '2.1.26', name: 'MODAL DASAR', helper: '2.1.26', side: 'kredit', report: 'neraca', type: 'ekuitas' },
+  { code: '2.1.27', name: 'LABA DI TAHAN', helper: '2.1.27', side: 'kredit', report: 'neraca', type: 'ekuitas' },
+  { code: '2.1.28', name: 'LABA / RUGI TAHUN BERJALAN', helper: '2.1.28', side: 'kredit', report: 'neraca', type: 'ekuitas' },
+  { code: '2.1.29', name: 'LABA TAHUN LALU', helper: '2.1.29', side: 'kredit', report: 'neraca', type: 'ekuitas' },
+  { code: '2.1.30', name: 'PRIVE', helper: '2.1.30', side: 'debet', report: 'neraca', type: 'ekuitas' },
+  { code: '3.1.10', name: 'PENDAPATAN DAGANG', helper: '3.1.10', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.11', name: 'PENDAPATAN PENJUALAN JASA', helper: '3.1.11', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.12', name: 'POTONGAN JUAL', helper: '3.1.12', side: 'debet', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.13', name: 'HARGA POKOK PENJUALAN', helper: '3.1.13', side: 'debet', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.14', name: 'HARGA POKOK PENJUALAN', helper: '3.1.14', side: 'debet', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.15', name: 'POTONGAN PEMBELIAN', helper: '3.1.15', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.16', name: 'KERUGIAN PIUTANG', helper: '3.1.16', side: 'debet', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.17', name: 'ITEM MASUK', helper: '3.1.17', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.18', name: 'ITEM KELUAR', helper: '3.1.18', side: 'debet', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.19', name: 'PENDAPATAN LAIN', helper: '3.1.19', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.20', name: 'PENDAPATAN BUNGA', helper: '3.1.20', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.21', name: 'PENDAPATAN PEMBULATAN NILAI UANG', helper: '3.1.21', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '3.1.22', name: 'PENDAPATAN LAIN-LAIN', helper: '3.1.22', side: 'kredit', report: 'laba-rugi', type: 'pendapatan' },
+  { code: '5.1.10', name: 'BIAYA INSTALASI PELANGGAN / BEBAN SUBKONTRAKTOR', helper: '5.1.10', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.11', name: 'BIAYA GAJI PEGAWAI', helper: '5.1.11', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.12', name: 'BIAYA BROADBAND', helper: '5.1.12', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.13', name: 'BIAYA TUNJANGAN PENDIDIKAN', helper: '5.1.13', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.14', name: 'BIAYA TUNJANGAN & MANFAAT LAINNYA', helper: '5.1.14', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.15', name: 'BIAYA UPAH KERJA KARYAWAN / KONSULTAN /', helper: '5.1.15', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.16', name: 'BIAYA INSENTIF KARYAWAN', helper: '5.1.16', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.17', name: 'BIAYA LEMBUR', helper: '5.1.17', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.18', name: 'BIAYA SEWA JARINGAN', helper: '5.1.18', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.19', name: 'BIAYA TUNJANGAN HARI RAYA (THR)', helper: '5.1.19', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.20', name: 'BIAYA TUNJANGAN KESEHATAN KARYAWAN', helper: '5.1.20', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.21', name: 'BIAYA TUNJANGAN ASURANSI KETENAGAKERJAAN', helper: '5.1.21', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.22', name: 'BIAYA TUNJANGAN MAKAN PEGAWAI', helper: '5.1.22', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.23', name: 'BIAYA UMUM', helper: '5.1.23', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.24', name: 'BIAYA LISTRIK', helper: '5.1.24', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.25', name: 'BIAYA SISTEM DAN TEKNOLOGI INFORMASI', helper: '5.1.25', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.26', name: 'BIAYA INVENTARIS KANTOR', helper: '5.1.26', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.27', name: 'BIAYA PEMASANGAN / PEMELIHARAN / PERBAIKAN INVENTARIS', helper: '5.1.27', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.28', name: 'BIAYA PENYUSUTAN INVENTARIS', helper: '5.1.28', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.29', name: 'BIAYA PERLENGKAPAN KANTOR', helper: '5.1.29', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.30', name: 'BIAYA ALAT TULIS KANTOR', helper: '5.1.30', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.31', name: 'BIAYA MANAGED SERVICE', helper: '5.1.31', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.32', name: 'BIAYA HIBURAN & REKREASI', helper: '5.1.32', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.33', name: 'BIAYA TRANSPORTASI (BENSIN, TOL & PARKIR)', helper: '5.1.33', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.34', name: 'BIAYA JAMUAN MAKAN', helper: '5.1.34', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.35', name: 'BIAYA ASURANSI', helper: '5.1.35', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.36', name: 'BIAYA SEWA DATA CENTER', helper: '5.1.36', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.37', name: 'BIAYA KEPERLUAN KANTOR', helper: '5.1.37', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.38', name: 'BIAYA TELEPON / KOMUNIKASI', helper: '5.1.38', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.39', name: 'BIAYA RUMAH TANGGA KANTOR', helper: '5.1.39', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.40', name: 'BIAYA IURAN', helper: '5.1.40', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.41', name: 'BIAYA KEAMANAN', helper: '5.1.41', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.42', name: 'BIAYA KEBERSIHAN', helper: '5.1.42', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.43', name: 'BIAYA OPERASIONAL', helper: '5.1.43', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.44', name: 'BIAYA SEWA TEMPAT', helper: '5.1.44', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.45', name: 'BIAYA UANG SAKU PERJALANAN DINAS', helper: '5.1.45', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.46', name: 'BIAYA INFRASTRUKTUR JARINGAN LANGSUNG', helper: '5.1.46', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.47', name: 'BIAYA ONGKIR', helper: '5.1.47', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.48', name: 'BIAYA PEMASARAN', helper: '5.1.48', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.49', name: 'BIAYA BONUS & KOMISI PENJUALAN MARKETING', helper: '5.1.49', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.50', name: 'BIAYA PERJALANAN DINAS', helper: '5.1.50', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.51', name: 'BIAYA IKLAN / PROMOSI / ENDORSE / SPONSO', helper: '5.1.51', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.52', name: 'BIAYA ENTERTAIN', helper: '5.1.52', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.53', name: 'BIAYA SOUVENIR / MERCHANDISE / HADIAH', helper: '5.1.53', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.54', name: 'BIAYA ONGKIR SOUVENIR / MERCHANDISE / HADIAH', helper: '5.1.54', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.55', name: 'BIAYA NON-OPERASIONAL', helper: '5.1.55', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.56', name: 'BIAYA ADMINISTRASI BANK', helper: '5.1.56', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.57', name: 'BIAYA BUNGA PINJAMAN BANK', helper: '5.1.57', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.58', name: 'BIAYA LEGAL / NOTARIS / PENGACARA / JASA', helper: '5.1.58', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.59', name: 'BIAYA DENDA / SANKSI', helper: '5.1.59', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.60', name: 'BIAYA PENYEWAAN RUANG SHAFT', helper: '5.1.60', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.61', name: 'BIAYA PAJAK PPH PASAL 21', helper: '5.1.61', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.62', name: 'BIAYA PAJAK HUTANG PPN', helper: '5.1.62', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.63', name: 'BIAYA PAJAK PPH PASAL 23', helper: '5.1.63', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.64', name: 'BIAYA PAJAK PPH FINAL (PASAL 4 AYAT 2)', helper: '5.1.64', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.65', name: 'BIAYA MATERAI', helper: '5.1.65', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.66', name: 'BIAYA LAINNYA', helper: '5.1.66', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.67', name: 'KERUGIAN PEMBULATAN NILAI UANG', helper: '5.1.67', side: 'debet', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.68', name: 'KOREKSI LABA RUGI KREDIT', helper: '5.1.68', side: 'kredit', report: 'laba-rugi', type: 'biaya' },
+  { code: '5.1.69', name: 'KOREKSI LABA RUGI DEBET', helper: '5.1.69', side: 'debet', report: 'laba-rugi', type: 'biaya' },
 ];
 
 const INVENTORY_ITEMS = [
@@ -31,7 +141,7 @@ function buildTrialBalance(accounts, entries) {
 
   entries.forEach((entry) => {
     entry.lines.forEach((line) => {
-      const row = byCode.get(line.code);
+      const row = byCode.get(line.code) || rows.find((account) => account.helper === line.code);
       if (!row) throw new Error(`Akun ${line.code} tidak ada dalam KODE AKUN`);
       row.debit += line.debit || 0;
       row.kredit += line.kredit || 0;
@@ -62,7 +172,7 @@ function buildTrialBalance(accounts, entries) {
 }
 
 function buildJournalRows(accounts, entries) {
-  const names = new Map(accounts.map((account) => [account.code, account.name]));
+  const names = new Map(accounts.flatMap((account) => [[account.code, account.name], [account.helper, account.name]]));
   return entries.flatMap((entry) =>
     entry.lines.map((line) => [
       entry.date,
@@ -137,7 +247,7 @@ function buildMonthly(accounts, entries) {
           if (type === 'biaya') expense += (line.debit || 0) - (line.kredit || 0);
         });
       });
-    monthly.push({ month, revenue, expense });
+    monthly.push({ month, number: monthNumber, revenue, expense });
   });
 
   return monthly;
@@ -146,25 +256,31 @@ function buildMonthly(accounts, entries) {
 function buildReportData(entries) {
   const trialBalance = buildTrialBalance(ACCOUNTS, entries);
   const inventory = buildInventory(entries, INVENTORY_ITEMS);
+  const signed = (row) => {
+    const normalSide = ['pendapatan', 'liabilitas', 'ekuitas'].includes(row.type) ? 'kredit' : 'debet';
+    return row.side === normalSide ? row.saldo : -row.saldo;
+  };
   const totalOf = (type) =>
-    trialBalance.rows.filter((row) => row.type === type).reduce((sum, row) => sum + row.saldo, 0);
+    trialBalance.rows.filter((row) => row.type === type).reduce((sum, row) => sum + signed(row), 0);
   const pendapatan = totalOf('pendapatan');
   const biaya = totalOf('biaya');
   const laba = pendapatan - biaya;
-  const kas = totalOf('kas');
+  const kas = trialBalance.rows
+    .filter((row) => row.report === 'neraca' && row.code.startsWith('1.'))
+    .reduce((sum, row) => sum + signed(row), 0);
   const group = (type) =>
     trialBalance.rows
-      .filter((row) => row.type === type && row.saldo !== 0)
-      .map((row) => ({ code: row.code, name: row.name, amount: row.saldo }));
+      .filter((row) => row.type === type && signed(row) !== 0)
+      .map((row) => ({ code: row.code, name: row.name, amount: signed(row) }));
 
   const stockAccount = trialBalance.rows.find((row) => row.code === '1.2.13');
   if (Math.abs(stockAccount.saldo - inventory.stockValue) > 0.01) {
     throw new Error('Nilai persediaan tidak cocok dengan kartu stok');
   }
 
-  const assets = group('aset').concat(group('kas')).sort((a, b) => a.code.localeCompare(b.code));
+  const assets = group('aset').sort((a, b) => a.code.localeCompare(b.code));
   const liabilities = group('liabilitas')
-    .concat(group('ekuitas'))
+    .concat(group('ekuitas').filter((row) => row.code !== '2.1.28'))
     .concat([{ code: '2.1.28', name: 'LABA / RUGI TAHUN BERJALAN', amount: laba, computed: true }])
     .sort((a, b) => a.code.localeCompare(b.code));
 
@@ -174,8 +290,8 @@ function buildReportData(entries) {
       period: entries.length ? entries[entries.length - 1].date.slice(0, 4) : '2025',
       source: SOURCE_SHEET,
       generatedAt: new Date().toISOString().slice(0, 10),
-      isDummy: true,
-      note: 'Isi jurnal umum lewat form input; laporan dihitung ulang otomatis.',
+      isDummy: false,
+      note: 'Kode akun, neraca, dan laba rugi mengikuti logika spreadsheet; isi jurnal manual.',
     },
     summary: { pendapatan, biaya, laba, kas },
     monthly: buildMonthly(ACCOUNTS, entries),

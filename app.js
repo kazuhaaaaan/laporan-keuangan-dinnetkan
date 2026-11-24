@@ -23,6 +23,7 @@ function renderDashboard() {
   renderCosts();
   renderComposition();
   renderBalance();
+  refreshFilterOptions();
   applyFilters();
 }
 
@@ -173,17 +174,22 @@ function renderComposition() {
   const expensePercent = summary.pendapatan ? (summary.biaya / summary.pendapatan) * 100 : 0;
   const profitPercent = 100 - expensePercent;
   const difference = summary.kas - summary.laba;
+  const hasData = journal.length > 0;
 
   const donut = document.getElementById('compositionDonut');
   donut.style.background = `conic-gradient(#f59e0b 0 ${expensePercent}%, #2f6bff ${expensePercent}% 100%)`;
-  donut.innerHTML = `<div class="donut-label"><strong>${profitPercent.toFixed(1)}%</strong><span>margin laba</span></div>`;
-  document.getElementById('compositionLegend').innerHTML = `
+  donut.innerHTML = `<div class="donut-label"><strong>${hasData ? `${profitPercent.toFixed(1)}%` : ''}</strong><span>margin laba</span></div>`;
+  document.getElementById('compositionLegend').innerHTML = hasData
+    ? `
     <div><span><i style="background:#f59e0b"></i>Total biaya</span><strong>${shortMoney(summary.biaya)}</strong></div>
     <div><span><i style="background:#2f6bff"></i>Laba bersih</span><strong>${shortMoney(summary.laba)}</strong></div>
-    <div><span><i style="background:#12a678"></i>Total pendapatan</span><strong>${shortMoney(summary.pendapatan)}</strong></div>`;
-  document.getElementById('cashInsight').innerHTML = `Kas setara kas tercatat <strong>${money(summary.kas)}</strong>, ${
-    difference >= 0 ? 'lebih tinggi' : 'lebih rendah'
-  } <strong>${money(Math.abs(difference))}</strong> dibanding laba bersih tahun berjalan.`;
+    <div><span><i style="background:#12a678"></i>Total pendapatan</span><strong>${shortMoney(summary.pendapatan)}</strong></div>`
+    : '<p class="chart-empty">Belum ada transaksi.</p>';
+  document.getElementById('cashInsight').innerHTML = hasData
+    ? `Kas setara kas tercatat <strong>${money(summary.kas)}</strong>, ${
+        difference >= 0 ? 'lebih tinggi' : 'lebih rendah'
+      } <strong>${money(Math.abs(difference))}</strong> dibanding laba bersih tahun berjalan.`
+    : '';
 }
 
 function renderBalance() {
@@ -213,24 +219,32 @@ function accountType(code) {
   return 'lainnya';
 }
 
-function initFilters() {
+function refreshFilterOptions() {
   const monthFilter = document.getElementById('monthFilter');
-  monthly.forEach((item, index) => {
+  const selectedMonth = monthFilter.value;
+  monthFilter.innerHTML = '<option value="">Semua bulan</option>';
+  monthly.forEach((item) => {
     const option = document.createElement('option');
-    option.value = String(index + 1).padStart(2, '0');
+    option.value = item.number;
     option.textContent = item.month;
     monthFilter.appendChild(option);
   });
+  monthFilter.value = monthly.some((item) => item.number === selectedMonth) ? selectedMonth : '';
 
   const accounts = [...new Map(journal.map((row) => [row[2], { code: row[2], name: row[3] }])).values()].sort((a, b) => a.code.localeCompare(b.code));
   const accountFilter = document.getElementById('accountFilter');
+  const selectedAccount = accountFilter.value;
+  accountFilter.innerHTML = '<option value="">Semua akun</option>';
   accounts.forEach((account) => {
     const option = document.createElement('option');
     option.value = account.code;
     option.textContent = `${account.code} · ${account.name}`;
     accountFilter.appendChild(option);
   });
+  accountFilter.value = accounts.some((account) => account.code === selectedAccount) ? selectedAccount : '';
+}
 
+function initFilters() {
   ['journalSearch', 'monthFilter', 'accountFilter', 'typeFilter'].forEach((id) => {
     document.getElementById(id).addEventListener('input', () => {
       currentPage = 1;
@@ -459,12 +473,7 @@ function initNavigation() {
   targets.forEach((target) => observer.observe(target));
 }
 
-initMeta();
-renderKpis();
-renderChart();
-renderCosts();
-renderComposition();
-renderBalance();
 initFilters();
+renderDashboard();
 initNavigation();
 initTransactionForm();
