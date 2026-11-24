@@ -455,6 +455,7 @@ function renderItems() {
         <td><span class="badge ${status.className}">${status.label}</span></td>
         <td><div class="action-cell">
           <button class="icon-btn" type="button" data-edit="${escapeHtml(item.id)}">Ubah</button>
+          <button class="icon-btn" type="button" data-depreciate="${escapeHtml(item.id)}">Penurunan</button>
           <button class="icon-btn danger" type="button" data-delete="${escapeHtml(item.id)}">Hapus</button>
         </div></td>
       </tr>`;
@@ -1014,10 +1015,20 @@ function initEvents() {
 
   $('itemTableBody').addEventListener('click', (event) => {
     const editId = event.target.dataset.edit;
+    const depreciateId = event.target.dataset.depreciate;
     const deleteId = event.target.dataset.delete;
     if (editId) {
       const item = itemById(editId);
       if (item) populateItemForm(item);
+    }
+    if (depreciateId) {
+      const item = itemById(depreciateId);
+      if (!item) return;
+      depreciationItemId = depreciateId;
+      $('depStatus').textContent = '';
+      renderDepreciationOptions();
+      document.getElementById('penurunan-harga')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('depValue').focus();
     }
     if (deleteId) {
       const item = itemById(deleteId);
