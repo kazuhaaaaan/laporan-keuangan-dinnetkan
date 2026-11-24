@@ -279,6 +279,33 @@
   overflow-x: auto;
 }
 
+.dep-rules {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.dep-rules-head {
+  color: var(--muted, #6f7d94);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dep-rule-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #dbe3ef);
+  border-radius: 10px;
+  background: #fbfcfe;
+  font-size: 12px;
+}
+
 #depSummary {
   min-width: 0;
   max-width: min(460px, 100%);

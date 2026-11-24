@@ -129,27 +129,47 @@ function monthSteps(start, end) {
   return steps;
 }
 
-function depreciationOf(itemId) {
-  return state.depreciations.find((rule) => rule.itemId === itemId);
+function depreciationsOf(itemId) {
+  return state.depreciations
+    .filter((rule) => rule.itemId === itemId)
+    .sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
+}
+
+function depreciationRuleLabel(rule) {
+  return rule.mode === 'percent' ? `${rule.value}%/bulan` : `Rp${rule.value}/bulan`;
 }
 
 function depreciationPlan(item) {
   const base = Number(item.price || 0);
-  const rule = depreciationOf(item.id);
-  if (!rule || rule.start > rule.end) return { base, rows: [], finalPrice: base, total: 0, rule: null };
-
-  const value = Number(rule.value || 0);
-  const percent = rule.mode === 'percent';
+  const rules = depreciationsOf(item.id).filter((rule) => rule.start <= rule.end && monthSteps(rule.start, rule.end).length);
   let price = base;
-  const rows = monthSteps(rule.start, rule.end).map((step, index) => {
-    const amount = percent ? (price * value) / 100 : value;
-    const decrease = Math.min(Math.max(0, amount), price);
-    const before = price;
-    price = Math.max(0, price - decrease);
-    return { ...step, number: index + 1, before, amount: decrease, after: price };
+  const rows = [];
+
+  rules.forEach((rule, ruleIndex) => {
+    const percent = rule.mode === 'percent';
+    const value = Number(rule.value || 0);
+    monthSteps(rule.start, rule.end).forEach((step) => {
+      const amount = percent ? (price * value) / 100 : value;
+      const decrease = Math.min(Math.max(0, amount), price);
+      const before = price;
+      price = Math.max(0, price - decrease);
+      rows.push({
+        ...step,
+        number: rows.length + 1,
+        ruleNumber: ruleIndex + 1,
+        ruleLabel: depreciationRuleLabel(rule),
+        ruleMode: rule.mode,
+        ruleValue: Number(rule.value || 0),
+        ruleStart: rule.start,
+        ruleEnd: rule.end,
+        before,
+        amount: decrease,
+        after: price,
+      });
+    });
   });
 
-  return { base, rows, finalPrice: price, total: base - price, rule };
+  return { base, rows, finalPrice: price, total: base - price, rules };
 }
 
 function startOfWeek(value) {
@@ -360,6 +380,14 @@ function renderItemOptions() {
   updateAvailableStock();
 }
 
+function resetDepreciationForm() {
+  $('depMode').value = 'nominal';
+  $('depValue').value = '';
+  $('depStart').value = '';
+  $('depEnd').value = '';
+  $('depStatus').textContent = '';
+}
+
 function renderDepreciationOptions() {
   if (!itemById(depreciationItemId)) depreciationItemId = state.items[0]?.id || '';
   $('depItem').innerHTML = state.items.length
@@ -369,7 +397,7 @@ function renderDepreciationOptions() {
     : '<option value="">Belum ada barang</option>';
   $('depItem').value = depreciationItemId;
   $('depSubmit').disabled = state.items.length === 0;
-  $('depClear').disabled = !depreciationOf(depreciationItemId);
+  $('depClear').disabled = depreciationsOf(depreciationItemId).length === 0;
   renderDepreciation();
 }
 
@@ -383,24 +411,33 @@ function renderDepreciation() {
   }
 
   const plan = depreciationPlan(item);
-  if (plan.rule) {
-    $('depMode').value = plan.rule.mode || 'nominal';
-    $('depValue').value = plan.rule.value;
-    $('depStart').value = plan.rule.start;
-    $('depEnd').value = plan.rule.end;
-  }
-  $('depSummary').textContent = `${item.code} · ${item.name} · Harga awal ${money(plan.base)} · ${plan.rows.length} kali penurunan · Harga akhir ${money(plan.finalPrice)}`;
+  $('depSummary').textContent = `${item.code} · ${item.name} · Harga awal ${money(plan.base)} · ${plan.rules.length} aturan · ${plan.rows.length} kali penurunan · Harga akhir ${money(plan.finalPrice)}`;
 
-  if (!plan.rule || !plan.rows.length) {
-    result.innerHTML = `<p class="chart-empty">${
-      plan.rule ? 'Periode kurang dari satu bulan penuh.' : 'Belum ada aturan penurunan untuk barang ini.'
+  const rulesMarkup = plan.rules.length
+    ? `<div class="dep-rules">
+        <div class="dep-rules-head">Aturan tersimpan (${plan.rules.length})</div>
+        ${plan.rules
+          .map(
+            (rule, index) => `<div class="dep-rule-row">
+              <span><strong>${index + 1}.</strong> ${escapeHtml(depreciationRuleLabel(rule))} · ${formatDate(rule.start)} – ${formatDate(rule.end)}</span>
+              <button class="icon-btn danger" type="button" data-delete-dep="${escapeHtml(rule.id)}">Hapus</button>
+            </div>`,
+          )
+          .join('')}
+      </div>`
+    : '';
+
+  if (!plan.rows.length) {
+    result.innerHTML = `${rulesMarkup}<p class="chart-empty">${
+      plan.rules.length ? 'Periode kurang dari satu bulan penuh.' : 'Belum ada aturan penurunan untuk barang ini.'
     } Harga saat ini ${money(plan.base)}.</p>`;
     return;
   }
 
-  result.innerHTML = `<div class="table-wrap"><table class="data-table">
+  result.innerHTML = `${rulesMarkup}<div class="table-wrap"><table class="data-table">
     <thead><tr>
       <th class="right">#</th>
+      <th>Aturan</th>
       <th>Periode penurunan</th>
       <th class="right">Harga awal</th>
       <th class="right">Penurunan</th>
@@ -411,6 +448,7 @@ function renderDepreciation() {
         .map(
           (row) => `<tr>
             <td class="num right">${row.number}</td>
+            <td>${escapeHtml(row.ruleLabel)}</td>
             <td>${formatDate(row.from)} – ${formatDate(row.to)}</td>
             <td class="num right">${money(row.before)}</td>
             <td class="num right">${money(row.amount)}</td>
@@ -418,7 +456,7 @@ function renderDepreciation() {
           </tr>`,
         )
         .join('')}
-      <tr class="total-row dep-final"><td></td><td>Harga akhir ${escapeHtml(item.name)}</td><td class="num right">${money(plan.base)}</td><td class="num right">${money(plan.total)}</td><td class="num right">${money(plan.finalPrice)}</td></tr>
+      <tr class="total-row dep-final"><td></td><td colspan="2">Harga akhir ${escapeHtml(item.name)}</td><td class="num right">${money(plan.base)}</td><td class="num right">${money(plan.total)}</td><td class="num right">${money(plan.finalPrice)}</td></tr>
     </tbody>
   </table></div>`;
 }
@@ -626,24 +664,37 @@ function submitDepreciation(event) {
     return;
   }
 
-  state.depreciations = state.depreciations.filter((rule) => rule.itemId !== item.id);
+  const ruleCount = depreciationsOf(item.id).length + 1;
   state.depreciations.push({ id: uid(), itemId: item.id, mode, value, start, end });
   saveState();
+  resetDepreciationForm();
   renderDepreciationOptions();
   renderItems();
-  $('depStatus').textContent = `Tersimpan: ${steps.length} kali penurunan.`;
+  $('depStatus').textContent = `Aturan ${ruleCount} tersimpan: ${steps.length} kali penurunan.`;
   toast('Penurunan harga disimpan.');
 }
 
-function clearDepreciation() {
-  const item = itemById(depreciationItemId);
-  if (!item || !depreciationOf(item.id)) return;
-  state.depreciations = state.depreciations.filter((rule) => rule.itemId !== item.id);
+function deleteDepreciationRule(ruleId) {
+  const rule = state.depreciations.find((entry) => entry.id === ruleId);
+  if (!rule) return;
+  state.depreciations = state.depreciations.filter((entry) => entry.id !== ruleId);
   saveState();
   renderDepreciationOptions();
   renderItems();
   $('depStatus').textContent = 'Aturan penurunan dihapus.';
-  toast('Penurunan harga dihapus.');
+  toast('Aturan penurunan dihapus.');
+}
+
+function clearDepreciation() {
+  const item = itemById(depreciationItemId);
+  if (!item || !depreciationsOf(item.id).length) return;
+  state.depreciations = state.depreciations.filter((rule) => rule.itemId !== item.id);
+  saveState();
+  resetDepreciationForm();
+  renderDepreciationOptions();
+  renderItems();
+  $('depStatus').textContent = 'Semua aturan penurunan dihapus.';
+  toast('Semua aturan penurunan dihapus.');
 }
 
 function submitTransaction(event) {
@@ -804,7 +855,9 @@ function buildMasterRows() {
   return [header, ...state.items.map((item) => {
     const status = stockStatus(item);
     const plan = depreciationPlan(item);
-    const rule = plan.rule;
+    const rules = plan.rules
+      .map((rule) => `${rule.start} s/d ${rule.end} · ${depreciationRuleLabel(rule)}`)
+      .join(' | ');
     return [
       item.code,
       item.name,
@@ -817,7 +870,7 @@ function buildMasterRows() {
       plan.base,
       plan.total,
       plan.finalPrice,
-      rule ? `${rule.start} s/d ${rule.end} · ${rule.mode === 'percent' ? `${rule.value}%/bulan` : `Rp${rule.value}/bulan`}` : '',
+      rules,
       status.label,
       stockOf(item) * plan.base,
       stockOf(item) * plan.finalPrice,
@@ -885,20 +938,29 @@ function buildSummaryRows(groupType) {
 }
 
 function buildDepreciationRows() {
-  const header = [['Barang', 'Header'], ['Harga Awal', 'Header'], ['Mulai', 'Header'], ['Sampai', 'Header'], ['Jenis', 'Header'], ['Nilai/Bulan', 'Header'], ['#', 'Header'], ['Periode', 'Header'], ['Penurunan', 'Header'], ['Harga Akhir', 'Header']];
+  const header = [['Barang', 'Header'], ['Harga Awal', 'Header'], ['Aturan', 'Header'], ['Mulai', 'Header'], ['Sampai', 'Header'], ['Jenis', 'Header'], ['Nilai/Bulan', 'Header'], ['#', 'Header'], ['Periode', 'Header'], ['Penurunan', 'Header'], ['Harga Akhir', 'Header']];
   if (!state.items.length) return [header, [['Belum ada barang']]];
 
   return [header, ...state.items.flatMap((item) => {
     const plan = depreciationPlan(item);
     const label = `${item.code} · ${item.name}`;
-    const prefix = plan.rule
-      ? [label, plan.base, plan.rule.start, plan.rule.end, plan.rule.mode === 'percent' ? `Persen ${plan.rule.value}%` : `Nominal ${plan.rule.value}`]
-      : [label, plan.base, '', '', 'Tanpa penurunan', ''];
+    if (!plan.rules.length) return [[label, plan.base, '', '', '', '', '', '', '', 0, plan.base]];
 
-    if (!plan.rows.length) return [[...prefix, '', '', 0, plan.base]];
     return [
-      ...plan.rows.map((row) => [...prefix, row.number, `${row.from} s/d ${row.to}`, row.amount, row.after]),
-      [...prefix, 'AKHIR', 'Harga akhir barang', plan.total, plan.finalPrice],
+      ...plan.rows.map((row) => [
+        label,
+        plan.base,
+        row.ruleNumber,
+        row.ruleStart,
+        row.ruleEnd,
+        row.ruleMode === 'percent' ? 'Persen' : 'Nominal',
+        row.ruleValue,
+        row.number,
+        `${row.from} s/d ${row.to}`,
+        row.amount,
+        row.after,
+      ]),
+      [label, plan.base, 'AKHIR', '', '', '', '', 'Harga akhir barang', '', plan.total, plan.finalPrice],
     ];
   })];
 }
@@ -912,7 +974,7 @@ function buildReferenceRows() {
     [['Jenis barang', 'Label'], [state.items.length]],
     [['Jumlah transaksi', 'Label'], [state.transactions.length]],
     [['Rumus stok', 'Label'], ['Stok akhir = Stok awal + Barang masuk - Barang keluar']],
-    [['Rumus penurunan', 'Label'], ['Harga akhir = Harga awal - penurunan per bulan x jumlah periode bulanan']],
+    [['Rumus penurunan', 'Label'], ['Tiap aturan dihitung per bulan; aturan berikutnya memakai harga setelah aturan sebelumnya']],
     [['Periode penurunan', 'Label'], ['Tiap periode dihitung dari tanggal mulai ke tanggal yang sama di bulan berikutnya']],
     [['Petunjuk', 'Label'], ['Sheet Harian = mutasi per tanggal']],
     [['', ''], ['Sheet Mingguan = ringkasan per minggu Senin-Minggu']],
@@ -958,7 +1020,7 @@ function importJson(event) {
       depreciationItemId = '';
       itemQuery = '';
       $('itemSearch').value = '';
-      $('depStatus').textContent = '';
+      resetDepreciationForm();
       saveState();
       renderAll();
       toast('Cadangan berhasil dimuat.');
@@ -1003,10 +1065,14 @@ function initEvents() {
   $('depreciationForm').addEventListener('submit', submitDepreciation);
   $('depItem').addEventListener('change', (event) => {
     depreciationItemId = event.target.value;
-    $('depStatus').textContent = '';
+    resetDepreciationForm();
     renderDepreciationOptions();
   });
   $('depClear').addEventListener('click', clearDepreciation);
+  $('depreciationResult').addEventListener('click', (event) => {
+    const ruleId = event.target.dataset.deleteDep;
+    if (ruleId) deleteDepreciationRule(ruleId);
+  });
 
   $('itemSearch').addEventListener('input', (event) => {
     itemQuery = event.target.value;
@@ -1025,7 +1091,7 @@ function initEvents() {
       const item = itemById(depreciateId);
       if (!item) return;
       depreciationItemId = depreciateId;
-      $('depStatus').textContent = '';
+      resetDepreciationForm();
       renderDepreciationOptions();
       document.getElementById('penurunan-harga')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       $('depValue').focus();
@@ -1071,7 +1137,7 @@ function initEvents() {
     depreciationItemId = '';
     itemQuery = '';
     $('itemSearch').value = '';
-    $('depStatus').textContent = '';
+    resetDepreciationForm();
     resetItemForm();
     saveState();
     renderAll();
