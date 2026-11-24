@@ -795,6 +795,28 @@ h3 {
   white-space: nowrap;
 }
 
+.worksheet-table {
+  min-width: 960px;
+}
+
+.worksheet-table thead tr:first-child th {
+  text-align: center;
+}
+
+.worksheet-table thead tr:first-child th:nth-child(-n + 4) {
+  text-align: left;
+}
+
+.worksheet-table td.pos {
+  color: #52637e;
+  white-space: nowrap;
+}
+
+.worksheet-table .closing-row td {
+  background: #fffaf0;
+  font-weight: 600;
+}
+
 .empty-row td {
   padding: 28px;
   color: var(--muted);

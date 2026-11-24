@@ -305,6 +305,7 @@ function buildReportData(entries) {
         code: row.code,
         name: row.name,
         side: row.side,
+        report: row.report,
         debit: row.debit,
         kredit: row.kredit,
         saldo: row.saldo,

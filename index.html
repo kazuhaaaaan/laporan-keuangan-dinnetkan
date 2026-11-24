@@ -38,6 +38,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M12 9h5M12 13h5" /></svg>
         Jurnal Umum
       </a>
+      <a class="nav-link" href="#neraca-jalur">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM3 9h18M3 14h18M9 4v16" /></svg>
+        Neraca Jalur
+      </a>
       <a class="nav-link" href="#neraca">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M7 7l-4 7h8L7 7zm10 0l-4 7h8l-4-7zM3 21h18" /></svg>
         Neraca
@@ -291,6 +295,41 @@
         <button class="btn btn-small" id="prevPage" type="button">Sebelumnya</button>
         <span id="pageInfo"></span>
         <button class="btn btn-small" id="nextPage" type="button">Berikutnya</button>
+      </div>
+    </section>
+
+    <section class="panel" id="neraca-jalur">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">WORKSHEET</p>
+          <h2>Neraca Jalur</h2>
+          <p class="panel-sub">Alur neraca saldo → laba rugi → neraca, mengikuti sheet “NERACA JALUR”.</p>
+        </div>
+        <span class="panel-meta" id="worksheetMeta"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table worksheet-table">
+          <thead>
+            <tr>
+              <th rowspan="2">Akun</th>
+              <th rowspan="2">Uraian</th>
+              <th rowspan="2">Pos Saldo</th>
+              <th rowspan="2">Pos Laporan</th>
+              <th colspan="2">Neraca Saldo</th>
+              <th colspan="2">Laba Rugi</th>
+              <th colspan="2">Neraca</th>
+            </tr>
+            <tr>
+              <th class="right">Debet</th>
+              <th class="right">Kredit</th>
+              <th class="right">Debet</th>
+              <th class="right">Kredit</th>
+              <th class="right">Debet</th>
+              <th class="right">Kredit</th>
+            </tr>
+          </thead>
+          <tbody id="worksheetBody"></tbody>
+        </table>
       </div>
     </section>
 

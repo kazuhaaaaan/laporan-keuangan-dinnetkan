@@ -23,6 +23,7 @@ function renderDashboard() {
   renderCosts();
   renderComposition();
   renderBalance();
+  renderWorksheet();
   refreshFilterOptions();
   applyFilters();
 }
@@ -210,6 +211,77 @@ function renderBalance() {
 
   document.getElementById('assetBody').innerHTML = `${renderRows(assets)}<tr class="total-row"><td></td><td>Total Aset</td><td class="num right">${money(sum(assets))}</td></tr>`;
   document.getElementById('liabilityBody').innerHTML = `${renderRows(liabilities)}<tr class="total-row"><td></td><td>Total Liabilitas &amp; Ekuitas</td><td class="num right">${money(sum(liabilities))}</td></tr>`;
+}
+
+function buildWorksheet() {
+  const activeRows = report.trialBalance.rows.filter((row) => row.debit || row.kredit);
+  const rows = activeRows.map((row) => {
+    const isIncome = row.report === 'laba-rugi';
+    return {
+      code: row.code,
+      name: row.name,
+      posSaldo: row.side === 'debet' ? 'Debet' : 'Kredit',
+      posLaporan: isIncome ? 'Laba Rugi' : 'Neraca',
+      saldoDebet: row.saldoDebet,
+      saldoKredit: row.saldoKredit,
+      labaDebet: isIncome ? row.saldoDebet : 0,
+      labaKredit: isIncome ? row.saldoKredit : 0,
+      neracaDebet: isIncome ? 0 : row.saldoDebet,
+      neracaKredit: isIncome ? 0 : row.saldoKredit,
+    };
+  });
+  const keys = ['saldoDebet', 'saldoKredit', 'labaDebet', 'labaKredit', 'neracaDebet', 'neracaKredit'];
+  const totals = (source) =>
+    Object.fromEntries(keys.map((key) => [key, source.reduce((sum, row) => sum + row[key], 0)]));
+  const before = totals(rows);
+  const closing = {
+    code: '',
+    name: summary.laba >= 0 ? 'Laba Bersih' : 'Rugi Bersih',
+    posSaldo: '',
+    posLaporan: 'Penutup',
+    saldoDebet: 0,
+    saldoKredit: 0,
+    labaDebet: summary.laba >= 0 ? summary.laba : 0,
+    labaKredit: summary.laba < 0 ? -summary.laba : 0,
+    neracaDebet: summary.laba < 0 ? -summary.laba : 0,
+    neracaKredit: summary.laba >= 0 ? summary.laba : 0,
+  };
+
+  return { rows, before, closing, after: totals([...rows, closing]) };
+}
+
+function renderWorksheet() {
+  const body = document.getElementById('worksheetBody');
+  const meta = document.getElementById('worksheetMeta');
+  const hasData = report.trialBalance.rows.some((row) => row.debit || row.kredit);
+  if (!hasData) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="10">Belum ada transaksi. Isi lewat form input transaksi untuk melihat neraca jalur.</td></tr>';
+    meta.textContent = '';
+    return;
+  }
+
+  const { rows, before, closing, after } = buildWorksheet();
+  const cell = (value) => `<td class="num right">${value ? money(value) : '—'}</td>`;
+  const renderRow = (row, className = '') => `<tr${className ? ` class="${className}"` : ''}>
+    <td class="account">${escapeHtml(row.code)}</td>
+    <td>${escapeHtml(row.name)}</td>
+    <td class="pos">${escapeHtml(row.posSaldo)}</td>
+    <td class="pos">${escapeHtml(row.posLaporan)}</td>
+    ${cell(row.saldoDebet)}
+    ${cell(row.saldoKredit)}
+    ${cell(row.labaDebet)}
+    ${cell(row.labaKredit)}
+    ${cell(row.neracaDebet)}
+    ${cell(row.neracaKredit)}
+  </tr>`;
+  const totalRow = (label, values, className) =>
+    renderRow({ code: '', name: label, posSaldo: '', posLaporan: '', ...values }, className);
+
+  body.innerHTML = `${rows.map((row) => renderRow(row)).join('')}
+    ${totalRow('Jumlah', before, 'total-row')}
+    ${renderRow(closing, 'closing-row')}
+    ${totalRow('Jumlah setelah laba', after, 'total-row')}`;
+  meta.textContent = `${rows.length} akun · ${summary.laba >= 0 ? 'Laba' : 'Rugi'} ${money(Math.abs(summary.laba))}`;
 }
 
 function accountType(code) {
