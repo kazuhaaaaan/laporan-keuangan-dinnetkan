@@ -3,6 +3,12 @@ const JOURNAL_SYNC_KEY = 'dinnetkan-inventory-journal-sync-v1';
 const $ = (id) => document.getElementById(id);
 
 const numberFormatter = new Intl.NumberFormat('id-ID');
+const currencyFormatter = new Intl.NumberFormat('id-ID', {
+  style: 'currency',
+  currency: 'IDR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const dateFormatter = new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 const shortDateFormatter = new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' });
 const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
@@ -14,10 +20,11 @@ let selectedDate = state.transactions.length
   : todayISO();
 let editingItemId = null;
 let stockItemId = '';
+let depreciationItemId = '';
 let itemQuery = '';
 
 function emptyState() {
-  return { items: [], transactions: [] };
+  return { items: [], transactions: [], depreciations: [] };
 }
 
 function seedState() {
@@ -28,6 +35,7 @@ function seedState() {
   return {
     items: inventory.items.map((item) => ({ ...item })),
     transactions: inventory.transactions.map((transaction) => ({ ...transaction })),
+    depreciations: [],
   };
 }
 
@@ -40,14 +48,16 @@ function loadState() {
   try {
     const signature = journalSignature();
     const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const depreciations = Array.isArray(parsed?.depreciations) ? parsed.depreciations : [];
     if (!raw || localStorage.getItem(JOURNAL_SYNC_KEY) !== signature) {
       localStorage.setItem(JOURNAL_SYNC_KEY, signature);
-      return seedState();
+      return { ...seedState(), depreciations };
     }
-    const parsed = JSON.parse(raw);
     return {
       items: Array.isArray(parsed.items) ? parsed.items : [],
       transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+      depreciations,
     };
   } catch (error) {
     return emptyState();
@@ -107,6 +117,41 @@ function addMonths(value, amount) {
   return toISODate(date);
 }
 
+function monthSteps(start, end) {
+  const steps = [];
+  let cursor = start;
+  while (cursor < end && steps.length < 240) {
+    const next = addMonths(cursor, 1);
+    if (next > end) break;
+    steps.push({ from: cursor, to: next });
+    cursor = next;
+  }
+  return steps;
+}
+
+function depreciationOf(itemId) {
+  return state.depreciations.find((rule) => rule.itemId === itemId);
+}
+
+function depreciationPlan(item) {
+  const base = Number(item.price || 0);
+  const rule = depreciationOf(item.id);
+  if (!rule || rule.start > rule.end) return { base, rows: [], finalPrice: base, total: 0, rule: null };
+
+  const value = Number(rule.value || 0);
+  const percent = rule.mode === 'percent';
+  let price = base;
+  const rows = monthSteps(rule.start, rule.end).map((step, index) => {
+    const amount = percent ? (price * value) / 100 : value;
+    const decrease = Math.min(Math.max(0, amount), price);
+    const before = price;
+    price = Math.max(0, price - decrease);
+    return { ...step, number: index + 1, before, amount: decrease, after: price };
+  });
+
+  return { base, rows, finalPrice: price, total: base - price, rule };
+}
+
 function startOfWeek(value) {
   const date = dateFromISO(value);
   date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
@@ -119,6 +164,10 @@ function formatDate(value) {
 
 function formatQty(value) {
   return numberFormatter.format(Number(value) || 0);
+}
+
+function money(value) {
+  return currencyFormatter.format(Number(value) || 0);
 }
 
 function periodRange() {
@@ -311,6 +360,69 @@ function renderItemOptions() {
   updateAvailableStock();
 }
 
+function renderDepreciationOptions() {
+  if (!itemById(depreciationItemId)) depreciationItemId = state.items[0]?.id || '';
+  $('depItem').innerHTML = state.items.length
+    ? state.items
+        .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.code)} · ${escapeHtml(item.name)}</option>`)
+        .join('')
+    : '<option value="">Belum ada barang</option>';
+  $('depItem').value = depreciationItemId;
+  $('depSubmit').disabled = state.items.length === 0;
+  $('depClear').disabled = !depreciationOf(depreciationItemId);
+  renderDepreciation();
+}
+
+function renderDepreciation() {
+  const item = itemById(depreciationItemId);
+  const result = $('depreciationResult');
+  if (!item) {
+    $('depSummary').textContent = '';
+    result.innerHTML = '<p class="chart-empty">Belum ada barang untuk dihitung.</p>';
+    return;
+  }
+
+  const plan = depreciationPlan(item);
+  if (plan.rule) {
+    $('depMode').value = plan.rule.mode || 'nominal';
+    $('depValue').value = plan.rule.value;
+    $('depStart').value = plan.rule.start;
+    $('depEnd').value = plan.rule.end;
+  }
+  $('depSummary').textContent = `Harga awal ${money(plan.base)} · ${plan.rows.length} kali penurunan · Harga akhir ${money(plan.finalPrice)}`;
+
+  if (!plan.rule || !plan.rows.length) {
+    result.innerHTML = `<p class="chart-empty">${
+      plan.rule ? 'Periode kurang dari satu bulan penuh.' : 'Belum ada aturan penurunan untuk barang ini.'
+    } Harga saat ini ${money(plan.base)}.</p>`;
+    return;
+  }
+
+  result.innerHTML = `<table class="data-table">
+    <thead><tr>
+      <th class="right">#</th>
+      <th>Periode penurunan</th>
+      <th class="right">Harga awal</th>
+      <th class="right">Penurunan</th>
+      <th class="right">Harga akhir</th>
+    </tr></thead>
+    <tbody>
+      ${plan.rows
+        .map(
+          (row) => `<tr>
+            <td class="num right">${row.number}</td>
+            <td>${formatDate(row.from)} – ${formatDate(row.to)}</td>
+            <td class="num right">${money(row.before)}</td>
+            <td class="num right">${money(row.amount)}</td>
+            <td class="num right">${money(row.after)}</td>
+          </tr>`,
+        )
+        .join('')}
+      <tr class="total-row dep-final"><td></td><td>Harga akhir barang</td><td class="num right">${money(plan.base)}</td><td class="num right">${money(plan.total)}</td><td class="num right">${money(plan.finalPrice)}</td></tr>
+    </tbody>
+  </table>`;
+}
+
 function updateAvailableStock() {
   const item = itemById($('trxItem').value);
   $('availableStock').textContent = item
@@ -324,18 +436,21 @@ function renderItems() {
 
   if (!items.length) {
     const message = state.items.length ? 'Tidak ada barang yang cocok dengan pencarian.' : 'Belum ada barang. Isi formulir Tambah Barang untuk mulai.';
-    $('itemTableBody').innerHTML = `<tr class="empty-row"><td colspan="7">${message}</td></tr>`;
+    $('itemTableBody').innerHTML = `<tr class="empty-row"><td colspan="9">${message}</td></tr>`;
     return;
   }
 
   $('itemTableBody').innerHTML = items
     .map((item) => {
       const status = stockStatus(item);
+      const plan = depreciationPlan(item);
       return `<tr>
         <td class="account">${escapeHtml(item.code)}</td>
         <td>${escapeHtml(item.name)}</td>
         <td>${escapeHtml(item.category || '—')}</td>
         <td class="num right">${formatQty(stockOf(item))} ${escapeHtml(item.unit || '')}</td>
+        <td class="num right">${money(plan.base)}</td>
+        <td class="num right"><strong>${money(plan.finalPrice)}</strong>${plan.total ? `<span class="price-drop">−${money(plan.total)}</span>` : ''}</td>
         <td class="num right">${formatQty(item.minStock || 0)}</td>
         <td><span class="badge ${status.className}">${status.label}</span></td>
         <td><div class="action-cell">
@@ -400,6 +515,7 @@ function renderAll() {
   renderKpis();
   renderMutationChart();
   renderItemOptions();
+  renderDepreciationOptions();
   renderItems();
   renderTransactions();
   renderStockCard();
@@ -468,6 +584,65 @@ function submitItem(event) {
   resetItemForm();
   saveState();
   renderAll();
+}
+
+function submitDepreciation(event) {
+  event.preventDefault();
+  const item = itemById(depreciationItemId || $('depItem').value);
+  if (!item) {
+    toast('Pilih barang terlebih dahulu.', 'error');
+    return;
+  }
+
+  const mode = $('depMode').value === 'percent' ? 'percent' : 'nominal';
+  const value = Number($('depValue').value);
+  const start = $('depStart').value;
+  const end = $('depEnd').value;
+  const fail = (message) => {
+    $('depStatus').textContent = message;
+    toast(message, 'error');
+  };
+
+  if (!start || !end) {
+    fail('Tanggal mulai dan akhir wajib diisi.');
+    return;
+  }
+  if (end < start) {
+    fail('Tanggal akhir harus setelah tanggal mulai.');
+    return;
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    fail('Nilai penurunan harus lebih dari nol.');
+    return;
+  }
+  if (mode === 'percent' && value > 100) {
+    fail('Penurunan persen maksimal 100%.');
+    return;
+  }
+  const steps = monthSteps(start, end);
+  if (!steps.length) {
+    fail('Periode harus minimal satu bulan penuh.');
+    return;
+  }
+
+  state.depreciations = state.depreciations.filter((rule) => rule.itemId !== item.id);
+  state.depreciations.push({ id: uid(), itemId: item.id, mode, value, start, end });
+  saveState();
+  renderDepreciationOptions();
+  renderItems();
+  $('depStatus').textContent = `Tersimpan: ${steps.length} kali penurunan.`;
+  toast('Penurunan harga disimpan.');
+}
+
+function clearDepreciation() {
+  const item = itemById(depreciationItemId);
+  if (!item || !depreciationOf(item.id)) return;
+  state.depreciations = state.depreciations.filter((rule) => rule.itemId !== item.id);
+  saveState();
+  renderDepreciationOptions();
+  renderItems();
+  $('depStatus').textContent = 'Aturan penurunan dihapus.';
+  toast('Penurunan harga dihapus.');
 }
 
 function submitTransaction(event) {
@@ -623,10 +798,12 @@ function buildTransactionRows(rows) {
 }
 
 function buildMasterRows() {
-  const header = [['Kode', 'Header'], ['Nama Barang', 'Header'], ['Kategori', 'Header'], ['Satuan', 'Header'], ['Lokasi', 'Header'], ['Stok Awal', 'Header'], ['Minimum', 'Header'], ['Stok Saat Ini', 'Header'], ['Status', 'Header'], ['Nilai Stok', 'Header']];
+  const header = [['Kode', 'Header'], ['Nama Barang', 'Header'], ['Kategori', 'Header'], ['Satuan', 'Header'], ['Lokasi', 'Header'], ['Stok Awal', 'Header'], ['Minimum', 'Header'], ['Stok Saat Ini', 'Header'], ['Harga Awal', 'Header'], ['Total Penurunan', 'Header'], ['Harga Akhir', 'Header'], ['Aturan Penurunan', 'Header'], ['Status', 'Header'], ['Nilai Stok Awal', 'Header'], ['Nilai Stok Akhir', 'Header']];
   if (!state.items.length) return [header, [['Belum ada barang']]];
   return [header, ...state.items.map((item) => {
     const status = stockStatus(item);
+    const plan = depreciationPlan(item);
+    const rule = plan.rule;
     return [
       item.code,
       item.name,
@@ -636,8 +813,13 @@ function buildMasterRows() {
       Number(item.initialStock || 0),
       Number(item.minStock || 0),
       stockOf(item),
+      plan.base,
+      plan.total,
+      plan.finalPrice,
+      rule ? `${rule.start} s/d ${rule.end} · ${rule.mode === 'percent' ? `${rule.value}%/bulan` : `Rp${rule.value}/bulan`}` : '',
       status.label,
-      stockOf(item) * Number(item.price || 0),
+      stockOf(item) * plan.base,
+      stockOf(item) * plan.finalPrice,
     ];
   })];
 }
@@ -701,6 +883,25 @@ function buildSummaryRows(groupType) {
   return rows.length ? [header, ...rows] : [header, [['Belum ada transaksi']]];
 }
 
+function buildDepreciationRows() {
+  const header = [['Barang', 'Header'], ['Harga Awal', 'Header'], ['Mulai', 'Header'], ['Sampai', 'Header'], ['Jenis', 'Header'], ['Nilai/Bulan', 'Header'], ['#', 'Header'], ['Periode', 'Header'], ['Penurunan', 'Header'], ['Harga Akhir', 'Header']];
+  if (!state.items.length) return [header, [['Belum ada barang']]];
+
+  return [header, ...state.items.flatMap((item) => {
+    const plan = depreciationPlan(item);
+    const label = `${item.code} · ${item.name}`;
+    const prefix = plan.rule
+      ? [label, plan.base, plan.rule.start, plan.rule.end, plan.rule.mode === 'percent' ? `Persen ${plan.rule.value}%` : `Nominal ${plan.rule.value}`]
+      : [label, plan.base, '', '', 'Tanpa penurunan', ''];
+
+    if (!plan.rows.length) return [[...prefix, '', '', 0, plan.base]];
+    return [
+      ...plan.rows.map((row) => [...prefix, row.number, `${row.from} s/d ${row.to}`, row.amount, row.after]),
+      [...prefix, 'AKHIR', 'Harga akhir barang', plan.total, plan.finalPrice],
+    ];
+  })];
+}
+
 function buildReferenceRows() {
   return [
     [['INVENTARIS DINNETKAN', 'Title']],
@@ -710,6 +911,8 @@ function buildReferenceRows() {
     [['Jenis barang', 'Label'], [state.items.length]],
     [['Jumlah transaksi', 'Label'], [state.transactions.length]],
     [['Rumus stok', 'Label'], ['Stok akhir = Stok awal + Barang masuk - Barang keluar']],
+    [['Rumus penurunan', 'Label'], ['Harga akhir = Harga awal - penurunan per bulan x jumlah periode bulanan']],
+    [['Periode penurunan', 'Label'], ['Tiap periode dihitung dari tanggal mulai ke tanggal yang sama di bulan berikutnya']],
     [['Petunjuk', 'Label'], ['Sheet Harian = mutasi per tanggal']],
     [['', ''], ['Sheet Mingguan = ringkasan per minggu Senin-Minggu']],
     [['', ''], ['Sheet Bulanan = ringkasan per bulan kalender']],
@@ -725,6 +928,7 @@ function exportExcel() {
     { name: 'Petunjuk', rows: buildReferenceRows() },
     { name: 'Periode Terpilih', rows: buildTransactionRows(periodTransactions()) },
     { name: 'Master Barang', rows: buildMasterRows() },
+    { name: 'Penurunan Harga', rows: buildDepreciationRows() },
     { name: 'Transaksi', rows: buildTransactionRows(allTransactions) },
     { name: 'Harian', rows: buildSummaryRows('day') },
     { name: 'Mingguan', rows: buildSummaryRows('week') },
@@ -733,7 +937,7 @@ function exportExcel() {
   ];
   const xml = buildWorkbook(sheets);
   download(xml, `inventaris-referensi-${todayISO()}.xls`, 'application/vnd.ms-excel');
-  toast('Excel berisi rekap harian, mingguan, bulanan, dan tahunan diunduh.');
+  toast('Excel berisi penurunan harga dan rekap harian, mingguan, bulanan, tahunan diunduh.');
 }
 
 function importJson(event) {
@@ -744,10 +948,16 @@ function importJson(event) {
     try {
       const parsed = JSON.parse(reader.result);
       if (!Array.isArray(parsed.items) || !Array.isArray(parsed.transactions)) throw new Error('format invalid');
-      state = { items: parsed.items, transactions: parsed.transactions };
+      state = {
+        items: parsed.items,
+        transactions: parsed.transactions,
+        depreciations: Array.isArray(parsed.depreciations) ? parsed.depreciations : [],
+      };
       stockItemId = '';
+      depreciationItemId = '';
       itemQuery = '';
       $('itemSearch').value = '';
+      $('depStatus').textContent = '';
       saveState();
       renderAll();
       toast('Cadangan berhasil dimuat.');
@@ -789,6 +999,14 @@ function initEvents() {
   $('trxItem').addEventListener('change', updateAvailableStock);
   $('trxType').addEventListener('change', updateAvailableStock);
 
+  $('depreciationForm').addEventListener('submit', submitDepreciation);
+  $('depItem').addEventListener('change', (event) => {
+    depreciationItemId = event.target.value;
+    $('depStatus').textContent = '';
+    renderDepreciationOptions();
+  });
+  $('depClear').addEventListener('click', clearDepreciation);
+
   $('itemSearch').addEventListener('input', (event) => {
     itemQuery = event.target.value;
     renderItems();
@@ -806,8 +1024,10 @@ function initEvents() {
       if (!item || !window.confirm(`Hapus ${item.name} beserta seluruh transaksinya?`)) return;
       state.items = state.items.filter((entry) => entry.id !== deleteId);
       state.transactions = state.transactions.filter((entry) => entry.itemId !== deleteId);
+      state.depreciations = state.depreciations.filter((entry) => entry.itemId !== deleteId);
       if (editingItemId === deleteId) resetItemForm();
       if (stockItemId === deleteId) stockItemId = '';
+      if (depreciationItemId === deleteId) depreciationItemId = '';
       saveState();
       renderAll();
       toast('Barang dihapus.');
@@ -834,11 +1054,13 @@ function initEvents() {
   $('exportCsvBtn').addEventListener('click', exportCsv);
   $('exportExcelBtn').addEventListener('click', exportExcel);
   $('resetBtn').addEventListener('click', () => {
-    if (!window.confirm('Hapus semua barang dan transaksi?')) return;
+    if (!window.confirm('Hapus semua barang, transaksi, dan aturan penurunan harga?')) return;
     state = emptyState();
     stockItemId = '';
+    depreciationItemId = '';
     itemQuery = '';
     $('itemSearch').value = '';
+    $('depStatus').textContent = '';
     resetItemForm();
     saveState();
     renderAll();

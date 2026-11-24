@@ -42,6 +42,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10M18 17l2 2 3-4" /></svg>
         Transaksi
       </a>
+      <a class="nav-link" href="#penurunan-harga">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M21 17v-5h-5" /></svg>
+        Penurunan Harga
+      </a>
       <a class="nav-link" href="#kartu-stok">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4" /></svg>
         Kartu Stok
@@ -226,12 +230,40 @@
       </article>
     </section>
 
+    <section class="panel" id="penurunan-harga">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">PENYESUAIAN HARGA</p>
+          <h2>Penurunan Harga per Bulan</h2>
+          <p class="panel-sub">Nilai per bulan dihitung otomatis dari tanggal mulai sampai akhir. Periode mengikuti tanggal yang sama tiap bulannya.</p>
+        </div>
+        <span class="panel-meta" id="depSummary"></span>
+      </div>
+      <form id="depreciationForm" class="stack-form">
+        <div class="form-row three">
+          <label class="field"><span>Barang *</span><select id="depItem" required><option value="">Belum ada barang</option></select></label>
+          <label class="field"><span>Jenis penurunan</span><select id="depMode"><option value="nominal">Nominal (Rp/bulan)</option><option value="percent">Persen (%/bulan)</option></select></label>
+          <label class="field"><span>Nilai per bulan *</span><input id="depValue" type="number" min="0.01" step="0.01" required placeholder="Contoh: 50000" /></label>
+        </div>
+        <div class="form-row">
+          <label class="field"><span>Mulai *</span><input id="depStart" type="date" required /></label>
+          <label class="field"><span>Sampai *</span><input id="depEnd" type="date" required /></label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="depSubmit" type="submit">Simpan Penurunan</button>
+          <button class="btn btn-ghost" id="depClear" type="button">Hapus aturan</button>
+          <span id="depStatus" role="status"></span>
+        </div>
+      </form>
+      <div class="depreciation-result" id="depreciationResult"></div>
+    </section>
+
     <section class="panel" id="barang">
       <div class="panel-head">
         <div>
           <p class="eyebrow">DATA MASTER</p>
           <h2>Daftar Barang</h2>
-          <p class="panel-sub">Stok dihitung dari stok awal ditambah mutasi masuk dikurangi mutasi keluar.</p>
+          <p class="panel-sub">Stok dihitung dari mutasi barang; harga akhir mengikuti aturan penurunan per bulan.</p>
         </div>
         <label class="field search-field compact-search">
           <span>Cari barang</span>
@@ -246,6 +278,8 @@
               <th>Nama Barang</th>
               <th>Kategori</th>
               <th class="right">Stok</th>
+              <th class="right">Harga Awal</th>
+              <th class="right">Harga Akhir</th>
               <th class="right">Minimum</th>
               <th>Status</th>
               <th class="right">Aksi</th>
