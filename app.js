@@ -84,14 +84,16 @@ function renderKpis() {
   const latest = monthly[monthly.length - 1] || { revenue: 0, expense: 0, month: '—' };
   const previous = monthly.length > 1 ? monthly[monthly.length - 2] : { revenue: 0, expense: 0, month: '—' };
   const margin = summary.pendapatan ? (summary.laba / summary.pendapatan) * 100 : 0;
+  const hasData = journal.length > 0;
+  const display = (amount) => (hasData ? money(amount) : '');
 
-  document.getElementById('kpiRevenue').textContent = money(summary.pendapatan);
-  document.getElementById('kpiExpense').textContent = money(summary.biaya);
-  document.getElementById('kpiProfit').textContent = money(summary.laba);
-  document.getElementById('kpiCash').textContent = money(summary.kas);
-  document.getElementById('revenueTrend').textContent = trend(latest.revenue, previous.revenue, previous.month);
-  document.getElementById('expenseTrend').textContent = trend(latest.expense, previous.expense, previous.month);
-  document.getElementById('marginTag').textContent = `MARGIN ${margin.toFixed(2)}%`;
+  document.getElementById('kpiRevenue').textContent = display(summary.pendapatan);
+  document.getElementById('kpiExpense').textContent = display(summary.biaya);
+  document.getElementById('kpiProfit').textContent = display(summary.laba);
+  document.getElementById('kpiCash').textContent = display(summary.kas);
+  document.getElementById('revenueTrend').textContent = hasData ? trend(latest.revenue, previous.revenue, previous.month) : '';
+  document.getElementById('expenseTrend').textContent = hasData ? trend(latest.expense, previous.expense, previous.month) : '';
+  document.getElementById('marginTag').textContent = hasData ? `MARGIN ${margin.toFixed(2)}%` : '';
 }
 
 function renderChart() {
