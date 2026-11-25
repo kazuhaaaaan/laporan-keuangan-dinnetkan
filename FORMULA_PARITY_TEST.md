@@ -3,7 +3,7 @@
 ## 1. Cara menjalankan
 
 ```powershell
-cd C:\Users\RYZEN\Documents\laporan-keuangan-dinnetkan-main
+cd <root proyek>
 node tools\parity-test.js
 node tools\smoke-test.js
 ```

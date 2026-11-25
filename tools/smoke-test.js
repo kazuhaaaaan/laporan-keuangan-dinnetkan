@@ -73,7 +73,7 @@ function createEngine(storage = {}) {
     description: 'data lama',
     lines: [{ code: '1.1.10', debit: 5000, kredit: 0 }, { code: '3.1.10', debit: 0, kredit: 5000 }],
   }];
-  const engine = createEngine({ 'dinnetkan-finance-journal-v2': JSON.stringify(legacy) });
+  const engine = createEngine({ 'dinetkan-finance-journal-v2': JSON.stringify(legacy) });
   const migrated = engine.evaluate('loadJournalEntries()');
   const newKey = engine.store['dinetkan-finance-v1'];
   check('migrasi localStorage', migrated.length === 1 && Boolean(newKey), `${migrated.length} transaksi, key baru ${newKey ? 'ada' : 'tidak ada'}`);

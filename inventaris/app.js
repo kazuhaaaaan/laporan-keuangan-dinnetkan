@@ -1,7 +1,5 @@
 const STORAGE_KEY = 'dinetkan-inventory-v1';
-const LEGACY_STORAGE_KEYS = ['dinnetkan-inventory-v1'];
 const JOURNAL_SYNC_KEY = 'dinetkan-inventory-journal-sync-v1';
-const LEGACY_JOURNAL_SYNC_KEY = 'dinnetkan-inventory-journal-sync-v1';
 const $ = (id) => document.getElementById(id);
 
 const numberFormatter = new Intl.NumberFormat('id-ID');
@@ -76,27 +74,11 @@ function normalizeInventoryState(parsed) {
 
 function loadState() {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-    let migratedFrom = '';
-    if (!raw) {
-      for (const key of LEGACY_STORAGE_KEYS) {
-        const legacy = localStorage.getItem(key);
-        if (legacy) {
-          raw = legacy;
-          migratedFrom = key;
-          break;
-        }
-      }
-    }
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return seedState();
     const state = normalizeInventoryState(JSON.parse(raw));
-    if (migratedFrom) {
-      state.migratedFrom = migratedFrom;
-      saveState(state);
-    }
     try {
       localStorage.setItem(JOURNAL_SYNC_KEY, journalSignature());
-      localStorage.removeItem(LEGACY_JOURNAL_SYNC_KEY);
     } catch (error) {
       // Signature only controls diagnostics; it must never block locally stored data.
     }

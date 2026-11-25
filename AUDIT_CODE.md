@@ -80,15 +80,15 @@ Tidak ada file dihapus. Tidak ada data historis, akun, nama customer, atau uraia
 
 ### C-07 — localStorage tidak terversi (HIGH, fixed)
 
-**Sebelum.** Kunci statis `dinnetkan-finance-journal-v2`, `dinnetkan-inventory-v1`, dan `dinnetkan-inventory-journal-sync-v1`. Tidak ada normalisasi, validasi, cadangan, atau migrasi.
+**Sebelum.** Kunci statis `dinetkan-finance-journal-v2`, `dinetkan-inventory-v1`, dan `dinetkan-inventory-journal-sync-v1`. Tidak ada normalisasi, validasi, cadangan, atau migrasi.
 
 **Sesudah.**
 
 | Kunci lama | Kunci baru |
 |---|---|
-| `dinnetkan-finance-journal-v2`, `dinnetkan-finance-journal-v1` | `dinetkan-finance-v1` |
-| `dinnetkan-inventory-v1` | `dinetkan-inventory-v1` |
-| `dinnetkan-inventory-journal-sync-v1` | `dinetkan-inventory-journal-sync-v1` |
+| `dinetkan-finance-journal-v2`, `dinetkan-finance-journal-v1` | `dinetkan-finance-v1` |
+| `dinetkan-inventory-v1` | `dinetkan-inventory-v1` |
+| `dinetkan-inventory-journal-sync-v1` | `dinetkan-inventory-journal-sync-v1` |
 
 - `normalizeFinanceState()` menerima array lama maupun objek `{version, entries, openingBalances, settings}`.
 - `normalizeInventoryState()` memfilter entitas tanpa id dan memisahkan transaksi turunan.
@@ -118,7 +118,7 @@ Tidak ada file dihapus. Tidak ada data historis, akun, nama customer, atau uraia
 
 ### C-11 — Branding (LOW, fixed)
 
-`Dinnetkan` → `Dinetkan` diterapkan pada teks UI, title, meta description, footer, dan ekspor Excel inventaris. Varian uppercase historis pada nama akun (`BANK BCA DINETKAN`, `BANK MANDIRI DINETKAN`), data `Sheet15`, dan keterangan transaksi tidak diubah. Empat kunci localStorage lama sengaja tetap memakai ejaan lama agar data lama terbaca; setelah dibaca, data ditulis ke kunci baru.
+Ejaan lama diseragamkan ke `Dinetkan` pada teks UI, title, meta description, footer, dan ekspor Excel inventaris. Varian uppercase historis pada nama akun (`BANK BCA DINETKAN`, `BANK MANDIRI DINETKAN`), data `Sheet15`, dan keterangan transaksi tidak diubah. Empat kunci localStorage lama kini memakai ejaan `dinetkan`; data pada kunci ejaan sebelumnya tidak dibaca otomatis dan perlu dipulihkan dari cadangan.
 
 ### C-12 — Tautan menu Inventaris (MEDIUM, fixed)
 

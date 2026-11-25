@@ -76,11 +76,11 @@ Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARI
 
 | Kunci aktif | Fungsi | Migration source |
 |---|---|---|
-| `dinetkan-finance-v1` | Jurnal, saldo awal, settings | `dinnetkan-finance-journal-v2`, `dinnetkan-finance-journal-v1` |
-| `dinetkan-inventory-v1` | Barang, transaksi lokal, aturan penurunan | `dinnetkan-inventory-v1` |
-| `dinetkan-inventory-journal-sync-v1` | Signature diagnostik | `dinnetkan-inventory-journal-sync-v1` |
+| `dinetkan-finance-v1` | Jurnal, saldo awal, settings | `dinetkan-finance-journal-v2`, `dinetkan-finance-journal-v1` |
+| `dinetkan-inventory-v1` | Barang, transaksi lokal, aturan penurunan | — |
+| `dinetkan-inventory-journal-sync-v1` | Signature diagnostik | — |
 
-Kunci lama sengaja tetap memakai ejaan `dinnetkan` agar data historis pengguna terbaca. Setelah dibaca, data ditulis ke kunci baru. Nama akun `DINETKAN` pada data historis juga tidak diubah.
+Kunci lama kini memakai ejaan `dinetkan`. Data pada kunci ejaan sebelumnya tidak dibaca otomatis; pulihkan dari cadangan JSON. Nama akun `DINETKAN` pada data historis juga tidak diubah.
 
 Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keuangan dan inventaris dapat dimuat kembali dengan validasi.
 

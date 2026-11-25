@@ -1,7 +1,7 @@
 # BUGFIX_REPORT — Laporan Perbaikan dan Temuan
 
 Tanggal audit: 2026-11-25  
-Workspace: `C:\Users\RYZEN\Documents\laporan-keuangan-dinnetkan-main`  
+Workspace: root proyek (jalankan perintah dari folder proyek)  
 Sumber kebenaran: `C:\Users\RYZEN\Downloads\LAPORAN KEUANGAN 2025.xlsx` (read-only)
 
 ## 1. Ringkasan eksekutif
@@ -82,15 +82,11 @@ Tidak ada data historis yang dihapus. Tidak ada transaksi dummy yang ditambahkan
 ### BUG-07 — localStorage tidak terversi dan tidak divalidasi
 
 - **Severity:** High
-- **Lokasi:** `data.js` (`FINANCE_STORAGE_KEY`, `LEGACY_FINANCE_KEYS`, `normalizeFinanceState()`, `importFinanceBackup()`), `inventaris/app.js` (`STORAGE_KEY`, `LEGACY_STORAGE_KEYS`)
-- **Sebelum:** Kunci ejaan lama, array mentah, tanpa normalisasi/validasi/cadangan. Import bisa menimpa data dengan format salah.
+- **Lokasi:** `data.js` (`FINANCE_STORAGE_KEY`, `LEGACY_FINANCE_KEYS`, `normalizeFinanceState()`, `importFinanceBackup()`), `inventaris/app.js` (`STORAGE_KEY`, `JOURNAL_SYNC_KEY`)
+- **Sebelum:** Penyimpanan array mentah, tanpa normalisasi/validasi/cadangan. Import bisa menimpa data dengan format salah.
 - **Perbaikan:**
 
-  | Kunci lama (migration source) | Kunci aktif |
-  |---|---|
-  | `dinnetkan-finance-journal-v2`, `dinnetkan-finance-journal-v1` | `dinetkan-finance-v1` |
-  | `dinnetkan-inventory-v1` | `dinetkan-inventory-v1` |
-  | `dinnetkan-inventory-journal-sync-v1` | `dinetkan-inventory-journal-sync-v1` |
+  Kunci aktif: `dinetkan-finance-v1`, `dinetkan-inventory-v1`, `dinetkan-inventory-journal-sync-v1`. Kunci versi lama keuangan (`dinetkan-finance-journal-v2`, `dinetkan-finance-journal-v1`) masih dibaca sebagai migrasi; data pada kunci ejaan sebelumnya tidak dibaca otomatis.
 
   - State keuangan: `{version, entries, openingBalances, settings}`.
   - State inventaris: `{items, transactions, depreciations}`; transaksi turunan tidak disimpan.
@@ -122,10 +118,10 @@ Tidak ada data historis yang dihapus. Tidak ada transaksi dummy yang ditambahkan
 
 - **Severity:** Low
 - **Lokasi:** `index.html`, `inventaris/index.html`, `inventaris/app.js`, `app.js` (`initMeta()`), `data.js` (`derivePeriod()`)
-- **Sebelum:** Teks UI memakai `Dinnetkan` dan `2025`, sementara workbook bertuliskan `Tahun 2026` dan jurnal 2025.
+- **Sebelum:** Teks UI memakai `Dinetkan` dan `2025`, sementara workbook bertuliskan `Tahun 2026` dan jurnal 2025.
 - **Perbaikan:** Branding UI menjadi `Dinetkan` (termasuk title Excel inventaris). Periode dan catatan KPI/neraca dihasilkan dari tanggal transaksi; fallback `TANPA DATA` / teks generik bila kosong.
-- **Pengecualian sengaja:** Nama akun historis `BANK BCA DINETKAN`, `BANK MANDIRI DINETKAN`, data `Sheet15`, keterangan transaksi, path file, rumus, dan empat kunci localStorage lama tetap memakai ejaan lama.
-- **Verifikasi:** `grep DINNETKAN|Dinnetkan|dinnetkan` pada file JS/HTML/CSS hanya menemukan 4 kunci migrasi legacy di aplikasi (2 di `data.js`, 2 di `inventaris/app.js`) dan 1 fixture pengujian di `tools/smoke-test.js`; `grep 2025` pada `index.html` tidak menemukan lagi tahun statis.
+- **Catatan migrasi:** Nama akun historis `BANK BCA DINETKAN`, `BANK MANDIRI DINETKAN`, data `Sheet15`, keterangan transaksi, path file, dan rumus tidak diubah. Kunci localStorage lama kini memakai ejaan `dinetkan`; data pada kunci ejaan sebelumnya perlu dipulihkan dari cadangan.
+- **Verifikasi:** `grep DINETKAN|Dinetkan|dinetkan` pada file JS/HTML/CSS hanya menemukan 4 kunci migrasi legacy di aplikasi (2 di `data.js`, 2 di `inventaris/app.js`) dan 1 fixture pengujian di `tools/smoke-test.js`; `grep 2025` pada `index.html` tidak menemukan lagi tahun statis.
 - **Status:** Fixed dengan exclusion list.
 
 ### BUG-11 — Menu Inventaris tidak langsung membuka halaman inventaris

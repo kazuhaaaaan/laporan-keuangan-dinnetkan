@@ -167,7 +167,7 @@ const CASH_EQUIVALENT_NAMES = new Set([
 ]);
 
 const FINANCE_STORAGE_KEY = 'dinetkan-finance-v1';
-const LEGACY_FINANCE_KEYS = ['dinnetkan-finance-journal-v2', 'dinnetkan-finance-journal-v1'];
+const LEGACY_FINANCE_KEYS = ['dinetkan-finance-journal-v2', 'dinetkan-finance-journal-v1'];
 const FINANCE_SCHEMA_VERSION = 1;
 
 ACCOUNTS.forEach((account, index) => {

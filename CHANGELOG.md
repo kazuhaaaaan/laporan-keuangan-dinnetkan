@@ -35,7 +35,8 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 ### Changed
 
-- Branding UI `Dinnetkan` → `Dinetkan` di dashboard, inventaris, dan judul ekspor Excel.
+- Branding UI diseragamkan ke `Dinetkan` di dashboard, inventaris, dan judul ekspor Excel.
+- Ejaan lama di seluruh file proyek diseragamkan menjadi `Dinetkan`, termasuk kunci localStorage; data pada kunci lama perlu dipulihkan dari cadangan.
 - Judul/deskripsi/footer dan catatan periode tidak lagi menuliskan `2025` secara statis; runtime memakai tanggal transaksi.
 - `buildWorksheet()` dan `renderBalance()` sekarang hanya memetakan hasil `REPORT_DATA`.
 - Inventaris tidak lagi menyimpan transaksi turunan jurnal di state lokal; baris turunan dienumerasi ulang dari jurnal saat merge.
@@ -60,7 +61,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 - Cache `LABA RUGI!C83` dibulatkan; toleransi 0,50 IDR didokumentasi.
 - `NERACA!A3 = Tahun 2026` vs jurnal 2025; tidak disamakan.
 - Master barang dan kebijakan penyusutan tidak ada di workbook; status `SKIP`.
-- Legacy `dinnetkan-*` storage keys, nama akun `DINETKAN`, data `Sheet15`, path, rumus, dan uraian historis tidak diubah.
+- Kunci localStorage lama kini memakai ejaan `dinetkan`; nama akun `DINETKAN`, data `Sheet15`, path, rumus, dan uraian historis tidak diubah. Data pada kunci ejaan sebelumnya perlu dipulihkan dari cadangan.
 
 ### Tests
 
