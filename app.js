@@ -429,10 +429,20 @@ function accountLabel(account) {
   return `${account.code} · ${account.name} (normal ${sideLabel})`;
 }
 
-function accountOptionsHtml() {
+function accountSelectOptionsHtml() {
   return getAccountList().map((account) =>
     `<option value="${escapeHtml(account.code)}">${escapeHtml(accountLabel(account))}</option>`,
   ).join('');
+}
+
+function accountListHtml(filter = '') {
+  const needle = filter.trim().toLowerCase();
+  return getAccountList()
+    .filter((account) => !needle || `${account.code} ${account.name}`.toLowerCase().includes(needle))
+    .map((account) =>
+      `<button type="button" class="combo-option" role="option" data-code="${escapeHtml(account.code)}">${escapeHtml(accountLabel(account))}</button>`,
+    )
+    .join('') || '<div class="combo-empty">Akun tidak ditemukan.</div>';
 }
 
 function resolveAccountInput(value) {
@@ -457,18 +467,18 @@ function resolveAccountInput(value) {
 }
 
 function refreshAccountOptions() {
-  const datalist = document.getElementById('accountOptions');
-  if (datalist) datalist.innerHTML = accountOptionsHtml();
+  const list = document.getElementById('accountOptions');
+  if (list && list.tagName !== 'DATALIST') list.innerHTML = accountListHtml();
   ['txDebit', 'txCredit', 'txAccount'].forEach((id) => {
     const select = document.getElementById(id);
     if (!select || select.tagName !== 'SELECT') return;
     const selected = select.value;
-    select.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
+    select.innerHTML = `<option value="">Pilih akun</option>${accountSelectOptionsHtml()}`;
     select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : '';
   });
   document.querySelectorAll('.extra-account').forEach((select) => {
     const selected = select.value;
-    select.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
+    select.innerHTML = `<option value="">Pilih akun</option>${accountSelectOptionsHtml()}`;
     select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : '';
   });
 }
@@ -673,6 +683,8 @@ function initTransactionForm() {
   const descriptionInput = document.getElementById('txDescription');
   const account = document.getElementById('txAccount');
   const accountOptions = document.getElementById('accountOptions');
+  const accountCombo = document.getElementById('accountCombo');
+  const accountToggle = document.getElementById('accountToggle');
   const side = document.getElementById('txSide');
   const amount = document.getElementById('txAmount');
   const item = document.getElementById('txItem');
@@ -683,10 +695,13 @@ function initTransactionForm() {
   const draftSummary = document.getElementById('pendataanSummary');
   const editInfo = document.getElementById('lineEditInfo');
   const addButton = document.getElementById('txAddLineBtn');
-  if (!dateInput || !descriptionInput || !account || !accountOptions || !side || !amount || !item || !mutation || !quantity || !status || !draftBody || !draftSummary || !editInfo || !addButton) return;
+  if (!dateInput || !descriptionInput || !account || !accountOptions || !accountCombo || !accountToggle || !side || !amount || !item || !mutation || !quantity || !status || !draftBody || !draftSummary || !editInfo || !addButton) return;
 
   let pendingLines = [];
   let editingIndex = null;
+  let selectedAccountCode = '';
+  let accountMatches = [];
+  let activeAccountIndex = -1;
 
   const setStatus = (message, type = '') => {
     status.textContent = message;
@@ -725,6 +740,9 @@ function initTransactionForm() {
 
   const clearLineInputs = () => {
     account.value = '';
+    selectedAccountCode = '';
+    activeAccountIndex = -1;
+    hideAccountList();
     side.value = 'debet';
     amount.value = '';
     editingIndex = null;
@@ -741,7 +759,87 @@ function initTransactionForm() {
     setStatus('');
   };
 
-  accountOptions.innerHTML = accountOptionsHtml();
+  const updateActiveAccountOption = () => {
+    accountOptions.querySelectorAll('.combo-option').forEach((option, index) => {
+      option.classList.toggle('active', index === activeAccountIndex);
+    });
+  };
+
+  const renderAccountList = (filter = '') => {
+    const needle = filter.trim().toLowerCase();
+    accountMatches = getAccountList().filter((entry) =>
+      !needle || `${entry.code} ${entry.name}`.toLowerCase().includes(needle));
+    accountOptions.innerHTML = accountMatches.map((entry) =>
+      `<button type="button" class="combo-option" role="option" data-code="${escapeHtml(entry.code)}">${escapeHtml(accountLabel(entry))}</button>`,
+    ).join('') || '<div class="combo-empty">Akun tidak ditemukan.</div>';
+    activeAccountIndex = accountMatches.length ? 0 : -1;
+    updateActiveAccountOption();
+  };
+
+  const showAccountList = (filter = account.value) => {
+    renderAccountList(filter);
+    accountOptions.hidden = false;
+    account.setAttribute('aria-expanded', 'true');
+  };
+
+  const hideAccountList = () => {
+    accountOptions.hidden = true;
+    account.setAttribute('aria-expanded', 'false');
+  };
+
+  const chooseAccount = (code) => {
+    const selected = getAccountList().find((entry) => entry.code === code);
+    if (!selected) return;
+    selectedAccountCode = selected.code;
+    account.value = accountLabel(selected);
+    hideAccountList();
+    setStatus('');
+  };
+
+  const moveAccountOption = (step) => {
+    if (!accountMatches.length) return;
+    activeAccountIndex = (activeAccountIndex + step + accountMatches.length) % accountMatches.length;
+    updateActiveAccountOption();
+    accountOptions.querySelector('.combo-option.active')?.scrollIntoView({ block: 'nearest' });
+  };
+
+  account.addEventListener('focus', () => {
+    account.select();
+    showAccountList('');
+  });
+  account.addEventListener('input', () => {
+    selectedAccountCode = '';
+    showAccountList(account.value);
+  });
+  account.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (accountOptions.hidden) showAccountList(account.value);
+      moveAccountOption(1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (accountOptions.hidden) showAccountList(account.value);
+      moveAccountOption(-1);
+    } else if (event.key === 'Enter') {
+      if (!accountOptions.hidden && activeAccountIndex >= 0) {
+        event.preventDefault();
+        chooseAccount(accountMatches[activeAccountIndex].code);
+      }
+    } else if (event.key === 'Escape') {
+      hideAccountList();
+    }
+  });
+  accountOptions.addEventListener('click', (event) => {
+    const option = event.target.closest('.combo-option');
+    if (option) chooseAccount(option.dataset.code);
+  });
+  accountToggle.addEventListener('click', () => {
+    if (accountOptions.hidden) account.focus();
+    else hideAccountList();
+  });
+  document.addEventListener('click', (event) => {
+    if (!accountCombo.contains(event.target)) hideAccountList();
+  });
 
   const fillItemOptions = () => {
     const selected = item.value;
@@ -775,8 +873,10 @@ function initTransactionForm() {
     try {
       if (!dateInput.value) throw new Error('Tanggal wajib diisi.');
       if (!descriptionInput.value.trim()) throw new Error('Keterangan wajib diisi.');
-      const selected = resolveAccountInput(account.value);
-      if (!selected) throw new Error('Cari dan pilih akun terlebih dahulu.');
+      const selected = selectedAccountCode
+        ? getAccountList().find((entry) => entry.code === selectedAccountCode)
+        : resolveAccountInput(account.value);
+      if (!selected) throw new Error('Pilih akun dari daftar terlebih dahulu.');
       const code = selected.code;
       const posisi = side.value;
       if (!posisi) throw new Error('Pilih posisi Debet atau Kredit.');
@@ -848,6 +948,7 @@ function initTransactionForm() {
       const line = pendingLines[index];
       if (!line) return;
       const selected = getAccountList().find((entry) => entry.code === line.code);
+      selectedAccountCode = selected ? selected.code : '';
       account.value = selected ? accountLabel(selected) : line.code;
       side.value = line.side;
       amount.value = String(line.amount);

@@ -49,7 +49,7 @@ const commonIds = [
 const pageIds = {
   'index.html': ['kpiRevenue', 'monthlyChart', 'costCount', 'compositionDonut'],
   'kode-akun.html': ['accountForm', 'accountStatus', 'accountSearch', 'accountCount', 'accountBody', 'acctCode', 'acctName', 'acctType', 'acctSide'],
-  'input-jurnal.html': ['journalForm', 'txDate', 'txDescription', 'txAccount', 'accountOptions', 'txSide', 'txAmount', 'txAddLineBtn', 'lineEditInfo', 'pendataanBody', 'pendataanSummary', 'saveJournalBtn', 'clearDraftBtn', 'formStatus', 'txItem', 'txMutation', 'txQuantity', 'invItemCode', 'invItemName', 'invItemUnit', 'invItemPrice', 'invItemInitial', 'invAddBtn', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
+  'input-jurnal.html': ['journalForm', 'txDate', 'txDescription', 'txAccount', 'accountFieldLabel', 'accountCombo', 'accountToggle', 'accountOptions', 'txSide', 'txAmount', 'txAddLineBtn', 'lineEditInfo', 'pendataanBody', 'pendataanSummary', 'saveJournalBtn', 'clearDraftBtn', 'formStatus', 'txItem', 'txMutation', 'txQuantity', 'invItemCode', 'invItemName', 'invItemUnit', 'invItemPrice', 'invItemInitial', 'invAddBtn', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
   'jurnal-umum.html': ['journalSearch', 'monthFilter', 'accountFilter', 'typeFilter', 'journalBody', 'journalCount', 'journalTotals', 'pageInfo', 'prevPage', 'nextPage', 'exportBtn'],
   'neraca-jalur.html': ['worksheetBody', 'worksheetMeta'],
   'laba-rugi.html': ['revenueBody', 'expenseBody', 'incomeMeta', 'incomeNote', 'incomeSummary'],
@@ -81,6 +81,16 @@ check(
   'input-data.html: redirect ke input-jurnal.html',
   redirectHtml.includes('href="input-jurnal.html"') && redirectHtml.includes('url=input-jurnal.html'),
   'tautan dan meta refresh tersedia',
+);
+
+const journalPageHtml = fs.readFileSync(path.join(ROOT, 'input-jurnal.html'), 'utf8');
+check(
+  'input-jurnal.html: daftar akun dapat dicari',
+  journalPageHtml.includes('id="accountCombo"')
+    && journalPageHtml.includes('role="combobox"')
+    && journalPageHtml.includes('id="accountOptions" role="listbox"')
+    && !journalPageHtml.includes('<datalist'),
+  'combobox dengan daftar, bukan datalist',
 );
 
 function createEngine(storage = {}) {

@@ -152,11 +152,16 @@
             </div>
           </div>
           <div class="journal-fields-grid">
-            <label class="field">
-              <span>Akun * (cari kode/nama)</span>
-              <input type="text" id="txAccount" list="accountOptions" placeholder="Ketik kode atau nama akun" autocomplete="off" required />
-              <datalist id="accountOptions"></datalist>
-            </label>
+            <div class="field">
+              <span id="accountFieldLabel">Akun * (daftar bisa dicari)</span>
+              <div class="account-combo" id="accountCombo">
+                <input type="text" id="txAccount" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="accountOptions" aria-labelledby="accountFieldLabel" placeholder="Cari kode/nama akun" autocomplete="off" required />
+                <button class="combo-toggle" id="accountToggle" type="button" aria-label="Buka daftar akun">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                <div class="combo-list" id="accountOptions" role="listbox" aria-labelledby="accountFieldLabel" hidden></div>
+              </div>
+            </div>
             <label class="field">
               <span>Posisi *</span>
               <select id="txSide" required>

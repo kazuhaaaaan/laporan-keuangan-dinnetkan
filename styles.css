@@ -1002,6 +1002,94 @@ h3 {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+.account-combo {
+  position: relative;
+}
+
+.account-combo input {
+  padding-right: 40px;
+}
+
+.combo-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.combo-toggle:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.combo-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+}
+
+.combo-list[hidden] {
+  display: none;
+}
+
+.combo-option {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line-light);
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.combo-option:last-child {
+  border-bottom: 0;
+}
+
+.combo-option:hover,
+.combo-option.active {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.combo-empty {
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
 /* Data Tables */
 .table-summary {
   display: flex;

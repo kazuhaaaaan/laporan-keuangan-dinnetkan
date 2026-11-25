@@ -51,7 +51,7 @@ Hasil terakhir:
 ```text
 syntax checks        : 3/3 OK
 parity-test.js       : PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2 | FAIL 0
-smoke-test.js        : 75/75 PASS
+smoke-test.js        : 76/76 PASS
 ```
 
 Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARITY_TEST.md`.
@@ -100,7 +100,7 @@ Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keu
 3. Baris mutasi inventaris berlabel `Jurnal` berasal dari jurnal umum dan tidak bisa dihapus langsung di halaman inventaris; hapus/hubah jurnal sumbernya.
 4. Penurunan harga hanya mengubah nilai barang di laporan inventaris. Tidak ada jurnal penyusutan otomatis sampai kebijakan ditetapkan.
 5. Filter bulan memakai `YYYY-MM`, sehingga Januari 2025 dan Januari 2026 tidak lagi bercampur.
-6. Form **Input Jurnal** menyimpan tanggal dan keterangan sekali per transaksi. Tiap baris berisi akun (bisa dicari dengan kode/nama), posisi Debet/Kredit, dan nominal; baris dikumpulkan dulu di tabel **Pendataan Jurnal**, bisa diubah/dihapus, lalu disimpan setelah total debit sama dengan kredit.
+6. Form **Input Jurnal** menyimpan tanggal dan keterangan sekali per transaksi. Tiap baris berisi akun dari daftar pilihan yang bisa dicari dengan kode/nama, posisi Debet/Kredit, dan nominal; baris dikumpulkan dulu di tabel **Pendataan Jurnal**, bisa diubah/dihapus, lalu disimpan setelah total debit sama dengan kredit.
 7. Barang baru bisa ditambahkan dari panel mutasi di Input Jurnal; barang tersebut masuk ke `dinetkan-inventory-v1` dan dapat dipilih untuk mutasi sekaligus tampil di halaman Inventaris.
 8. Setelah jurnal disimpan, transaksi langsung tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca** karena keempatnya dibangun dari `REPORT_DATA` yang sama.
 9. Setiap menu sidebar membuka halamannya sendiri; **Ringkasan** dan **Analisis** tetap merupakan bagian dari `index.html`, sedangkan **Inventaris** membuka `inventaris/index.html` dan tautan baliknya memakai `../index.html`.
