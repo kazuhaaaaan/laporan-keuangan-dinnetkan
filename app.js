@@ -324,8 +324,30 @@ function renderWorksheet() {
   meta.textContent = `${rows.length} akun · ${summary.laba >= 0 ? 'Laba' : 'Rugi'} ${money(Math.abs(summary.laba))}`;
 }
 
+function accountOptionsHtml() {
+  return getAccountList().map((account) => {
+    const sideLabel = account.side === 'debet' ? 'Debet' : 'Kredit';
+    return `<option value="${escapeHtml(account.code)}">${escapeHtml(account.code)} · ${escapeHtml(account.name)} (normal ${sideLabel})</option>`;
+  }).join('');
+}
+
+function refreshAccountOptions() {
+  ['txDebit', 'txCredit'].forEach((id) => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const selected = select.value;
+    select.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
+    select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : '';
+  });
+  document.querySelectorAll('.extra-account').forEach((select) => {
+    const selected = select.value;
+    select.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
+    select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : '';
+  });
+}
+
 function accountType(code) {
-  const account = ACCOUNTS.find((item) => item.code === code || item.sourceCode === code || item.helper === code);
+  const account = getAccountList().find((item) => item.code === code || item.sourceCode === code || item.helper === code);
   if (!account) return 'lainnya';
   if (CASH_EQUIVALENT_NAMES.has(account.name)) return 'kas';
   if (account.type === 'pendapatan') return 'pendapatan';
@@ -525,12 +547,8 @@ function initTransactionForm() {
     status.className = `form-status ${type}`.trim();
   };
 
-  const accountOptions = ACCOUNTS.map((account) => {
-    const sideLabel = account.side === 'debet' ? 'Debet' : 'Kredit';
-    return `<option value="${escapeHtml(account.code)}">${escapeHtml(account.code)} · ${escapeHtml(account.name)} (normal ${sideLabel})</option>`;
-  }).join('');
-  debit.innerHTML = accountOptions;
-  credit.innerHTML = accountOptions;
+  debit.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
+  credit.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
 
   INVENTORY_ITEMS.forEach((product) => {
     const option = document.createElement('option');
@@ -545,7 +563,7 @@ function initTransactionForm() {
     row.className = 'extra-line';
     row.dataset.line = String(lineSequence);
     row.innerHTML = `
-      <select class="extra-account" aria-label="Akun tambahan" required>${accountOptions}</select>
+      <select class="extra-account" aria-label="Akun tambahan" required><option value="">Pilih akun</option>${accountOptionsHtml()}</select>
       <select class="extra-side" aria-label="Posisi akun tambahan">
         <option value="debet">Debet</option>
         <option value="kredit">Kredit</option>
@@ -598,8 +616,9 @@ function initTransactionForm() {
       if (!description) throw new Error('Keterangan wajib diisi.');
       if (!debitCode || !creditCode) throw new Error('Pilih akun debit dan kredit.');
       if (debitCode === creditCode) throw new Error('Akun debit dan kredit harus berbeda.');
-      const debitAccount = ACCOUNTS.find((account) => account.code === debitCode);
-      const creditAccount = ACCOUNTS.find((account) => account.code === creditCode);
+      const accountList = getAccountList();
+      const debitAccount = accountList.find((account) => account.code === debitCode);
+      const creditAccount = accountList.find((account) => account.code === creditCode);
       if (debitAccount?.side === 'kredit') {
         throw new Error(`${debitAccount.code} ${debitAccount.name} normalnya di Kredit. Pindah ke kolom Akun Kredit.`);
       }
@@ -619,7 +638,7 @@ function initTransactionForm() {
         const value = Number(row.querySelector('.extra-amount').value);
         if (!code) throw new Error('Pilih akun pada semua baris tambahan.');
         if (!Number.isFinite(value) || value <= 0) throw new Error('Nominal baris tambahan harus lebih dari 0.');
-        const account = ACCOUNTS.find((item) => item.code === code);
+        const account = getAccountList().find((item) => item.code === code);
         if (account?.side !== side) {
           throw new Error(`${account?.code || code} normalnya di ${account?.side === 'debet' ? 'Debet' : 'Kredit'}. Sesuaikan posisi baris.`);
         }
@@ -711,6 +730,93 @@ function initTransactionForm() {
   resetForm();
 }
 
+function renderAccountList() {
+  const body = document.getElementById('accountBody');
+  if (!body) return;
+  const query = document.getElementById('accountSearch').value.trim().toLowerCase();
+  const accounts = getAccountList().filter((account) =>
+    `${account.code} ${account.name}`.toLowerCase().includes(query),
+  );
+  document.getElementById('accountCount').textContent = `${accounts.length} akun`;
+  body.innerHTML = accounts.map((account) => `
+    <tr>
+      <td class="account"><span class="code-badge">${escapeHtml(account.code)}</span>${account.custom ? ' <span class="pill-optional">Baru</span>' : ''}</td>
+      <td>${escapeHtml(account.name)}</td>
+      <td>${escapeHtml(account.type)}</td>
+      <td>${account.side === 'debet' ? 'Debet' : 'Kredit'}</td>
+      <td>${account.report === 'neraca' ? 'Neraca' : 'Laba Rugi'}</td>
+      <td><button class="btn btn-ghost danger-btn delete-account-btn" type="button" data-code="${escapeHtml(account.code)}">Hapus</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty-row">Tidak ada akun yang cocok.</td></tr>';
+}
+
+function afterAccountChange() {
+  syncReport();
+  renderDashboard();
+  refreshAccountOptions();
+  renderAccountList();
+}
+
+function initAccountManager() {
+  const form = document.getElementById('accountForm');
+  if (!form) return;
+  const status = document.getElementById('accountStatus');
+  const setStatus = (message, type = '') => {
+    status.textContent = message;
+    status.className = `form-status ${type}`.trim();
+  };
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const raw = {
+      code: document.getElementById('acctCode').value,
+      name: document.getElementById('acctName').value,
+      type: document.getElementById('acctType').value,
+      side: document.getElementById('acctSide').value,
+    };
+    try {
+      const result = addAccount(raw);
+      form.reset();
+      document.getElementById('acctType').value = 'aset';
+      document.getElementById('acctSide').value = 'debet';
+      const message = result.restored
+        ? `Akun ${result.account.code} dipulihkan.`
+        : `Akun ${result.account.code} · ${result.account.name} ditambahkan.`;
+      afterAccountChange();
+      setStatus(message, 'success');
+      showToast(message);
+    } catch (error) {
+      setStatus(error.message, 'error');
+      showToast(error.message, 'error');
+    }
+  });
+
+  document.getElementById('accountSearch').addEventListener('input', renderAccountList);
+  document.getElementById('accountBody').addEventListener('click', (event) => {
+    const button = event.target.closest('.delete-account-btn');
+    if (!button) return;
+    const code = button.dataset.code;
+    const usage = getAccountUsage(code);
+    if (usage.used) {
+      const message = `Akun ${code} tidak bisa dihapus karena ${usage.reason}.`;
+      setStatus(message, 'error');
+      showToast(message, 'error');
+      return;
+    }
+    if (!confirm(`Hapus akun ${code} dari daftar akun?`)) return;
+    try {
+      deleteAccount(code);
+      afterAccountChange();
+      setStatus(`Akun ${code} dihapus.`, 'info');
+      showToast(`Akun ${code} dihapus.`);
+    } catch (error) {
+      setStatus(error.message, 'error');
+      showToast(error.message, 'error');
+    }
+  });
+
+  renderAccountList();
+}
+
 function initNavigation() {
   const toggle = document.getElementById('mobileToggle');
   const sidebar = document.getElementById('sidebar');
@@ -750,3 +856,4 @@ initFilters();
 renderDashboard();
 initNavigation();
 initTransactionForm();
+initAccountManager();

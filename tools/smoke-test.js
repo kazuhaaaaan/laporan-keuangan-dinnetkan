@@ -109,4 +109,37 @@ function createEngine(storage = {}) {
   check('round-trip cadangan JSON', result.ok === true && result.state.entries.length === 1, `ok=${result.ok}, ${result.state.entries.length} transaksi`);
 }
 
+// Akun kustom harus ikut laporan dan tidak bisa dihapus saat masih dipakai.
+{
+  const engine = createEngine();
+  const added = engine.evaluate(`addAccount({ code: '5.1.70', name: 'BIAYA UJI', type: 'biaya', side: 'debet' })`);
+  engine.evaluate(`addJournalEntry({ ref: 'ACC-1', date: '2025-06-01', description: 'akun kustom', lines: [
+    { code: '5.1.70', debit: 10, kredit: 0 }, { code: '3.1.10', debit: 0, kredit: 10 }
+  ] })`);
+  const report = engine.evaluate('REPORT_DATA');
+  const usage = engine.evaluate(`getAccountUsage('5.1.70')`);
+  const deleteResult = engine.evaluate(`(() => {
+    try { deleteAccount('5.1.70'); return 'deleted'; } catch (error) { return error.message; }
+  })()`);
+  check(
+    'tambah akun kustom',
+    added.account.code === '5.1.70' && report.trialBalance.rows.some((row) => row.code === '5.1.70'),
+    `akun=${added.account.code}, neraca=${report.trialBalance.rows.some((row) => row.code === '5.1.70')}`,
+  );
+  check(
+    'akun terpakai tidak bisa dihapus',
+    usage.entries === 1 && deleteResult !== 'deleted',
+    `dipakai ${usage.entries} transaksi, hapus=${deleteResult}`,
+  );
+}
+
+// Akun kustom yang belum dipakai boleh dihapus.
+{
+  const engine = createEngine();
+  engine.evaluate(`addAccount({ code: '5.1.71', name: 'BIAYA UJI 2', type: 'biaya', side: 'debet' })`);
+  const removed = engine.evaluate(`deleteAccount('5.1.71')`);
+  const stillListed = engine.evaluate(`getAccountList().some((account) => account.code === '5.1.71')`);
+  check('hapus akun belum terpakai', removed === true && !stillListed, `removed=${removed}, masih ada=${stillListed}`);
+}
+
 if (failed) process.exitCode = 1;

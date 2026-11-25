@@ -6,6 +6,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 ### Added
 
+- Manajemen kode akun di web: tambah akun kustom, hapus akun yang belum dipakai, dan sinkronisasi ke laporan serta cadangan JSON.
 - `data.js`
   - `SOURCE_ACCOUNT_CODES` + `sourceCode` pada 124 akun untuk memetakan kode serial `KODE AKUN!A` tanpa mengganti kode tampilan.
   - `CASH_EQUIVALENT_NAMES` sebagai definisi tunggal kas setara kas.
@@ -15,6 +16,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
   - `meta.diagnostics` untuk `validationErrors`, `unmappedLines`, `journalImbalance`, `inventoryVariance`, dan `depreciationLines`.
   - `buildReportData()` sebagai satu-satunya jalur perhitungan laporan.
 - `app.js`
+  - Panel **Kode Akun** dengan form tambah, pencarian, daftar akun, dan pengaman hapus akun terpakai.
   - Banner validasi `BLOCKED`.
   - Filter bulan `YYYY-MM` lintas tahun.
   - Form jurnal multi-baris dengan validasi sisi normal dan keseimbangan.

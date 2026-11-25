@@ -166,6 +166,22 @@ const CASH_EQUIVALENT_NAMES = new Set([
   'BANK',
 ]);
 
+const ACCOUNT_TYPES = ['aset', 'liabilitas', 'ekuitas', 'pendapatan', 'biaya'];
+const ACCOUNT_REPORT_BY_TYPE = {
+  aset: 'neraca',
+  liabilitas: 'neraca',
+  ekuitas: 'neraca',
+  pendapatan: 'laba-rugi',
+  biaya: 'laba-rugi',
+};
+const ACCOUNT_SIDE_BY_TYPE = {
+  aset: 'debet',
+  biaya: 'debet',
+  liabilitas: 'kredit',
+  ekuitas: 'kredit',
+  pendapatan: 'kredit',
+};
+
 const FINANCE_STORAGE_KEY = 'dinetkan-finance-v1';
 const LEGACY_FINANCE_KEYS = ['dinetkan-finance-journal-v2', 'dinetkan-finance-journal-v1'];
 const FINANCE_SCHEMA_VERSION = 1;
@@ -489,6 +505,140 @@ function normalizeOpeningBalances(input) {
   return result;
 }
 
+function normalizeAccount(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const code = String(raw.code ?? '').trim().toUpperCase();
+  const name = String(raw.name ?? '').trim().toUpperCase();
+  const type = String(raw.type ?? '').trim().toLowerCase();
+  if (!code || !name || !ACCOUNT_TYPES.includes(type)) return null;
+  const side = ['debet', 'kredit'].includes(String(raw.side ?? '').trim().toLowerCase())
+    ? String(raw.side).trim().toLowerCase()
+    : ACCOUNT_SIDE_BY_TYPE[type];
+  return {
+    code,
+    name,
+    helper: code,
+    sourceCode: code,
+    side,
+    report: ACCOUNT_REPORT_BY_TYPE[type],
+    type,
+    custom: true,
+  };
+}
+
+function getAccountList(state) {
+  const current = state || loadFinanceState();
+  const deleted = new Set((Array.isArray(current.deletedAccounts) ? current.deletedAccounts : []).map(String));
+  const custom = (Array.isArray(current.accounts) ? current.accounts : []).map(normalizeAccount).filter(Boolean);
+  const seen = new Set();
+  const list = [];
+  [...ACCOUNTS.filter((account) => !deleted.has(String(account.code))), ...custom].forEach((account) => {
+    const keys = [account.code, account.sourceCode, account.helper].filter(Boolean).map(String);
+    if (keys.some((key) => seen.has(key))) return;
+    keys.forEach((key) => seen.add(key));
+    list.push(account);
+  });
+  return list.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+}
+
+function getAccountUsage(code, state) {
+  const current = state || loadFinanceState();
+  const normalized = String(code ?? '').trim().toUpperCase();
+  const account = getAccountList(current).find(
+    (item) => item.code === normalized || item.sourceCode === normalized || item.helper === normalized,
+  );
+  const keys = account
+    ? [account.code, account.sourceCode, account.helper].filter(Boolean).map(String)
+    : [normalized];
+  const opening = keys.some((key) => Object.prototype.hasOwnProperty.call(current.openingBalances || {}, key));
+  const entries = (current.entries || []).filter((entry) =>
+    (entry.lines || []).some((line) => keys.includes(String(line.code ?? '').trim().toUpperCase())),
+  ).length;
+  return {
+    account,
+    entries,
+    opening,
+    used: entries > 0 || opening,
+    reason: [
+      entries ? `digunakan ${entries} transaksi` : '',
+      opening ? 'memiliki saldo awal' : '',
+    ].filter(Boolean).join(' dan '),
+  };
+}
+
+function validateAccount(raw, state) {
+  const errors = [];
+  const code = String(raw?.code ?? '').trim().toUpperCase();
+  const name = String(raw?.name ?? '').trim().toUpperCase();
+  const type = String(raw?.type ?? '').trim().toLowerCase();
+  const side = String(raw?.side ?? '').trim().toLowerCase() || ACCOUNT_SIDE_BY_TYPE[type] || '';
+
+  if (!code) errors.push('Kode akun wajib diisi.');
+  else if (!/^[A-Z0-9.\-]+$/.test(code)) errors.push('Kode akun hanya boleh huruf, angka, titik, dan tanda hubung.');
+  if (!name) errors.push('Nama akun wajib diisi.');
+  if (!ACCOUNT_TYPES.includes(type)) errors.push(`Jenis akun harus salah satu: ${ACCOUNT_TYPES.join(', ')}.`);
+  if (!['debet', 'kredit'].includes(side)) errors.push('Posisi normal harus Debet atau Kredit.');
+
+  if (!errors.length) {
+    const keys = new Set();
+    getAccountList(state).forEach((account) => {
+      [account.code, account.sourceCode, account.helper].filter(Boolean).forEach((key) => keys.add(String(key)));
+    });
+    if (keys.has(code)) errors.push(`Kode ${code} sudah digunakan akun lain.`);
+  }
+  return errors;
+}
+
+function addAccount(raw) {
+  const state = loadFinanceState();
+  state.accounts = Array.isArray(state.accounts) ? state.accounts : [];
+  state.deletedAccounts = Array.isArray(state.deletedAccounts) ? state.deletedAccounts : [];
+  const code = String(raw?.code ?? '').trim().toUpperCase();
+
+  const restoredAccount = ACCOUNTS.find((account) => account.code === code);
+  if (restoredAccount && state.deletedAccounts.map(String).includes(code)) {
+    state.deletedAccounts = state.deletedAccounts.filter((item) => String(item) !== code);
+    saveFinanceState(state);
+    REPORT_DATA = buildReportData(state.entries, { state });
+    return { restored: true, account: restoredAccount };
+  }
+  state.deletedAccounts = state.deletedAccounts.filter((item) => String(item) !== code);
+
+  const errors = validateAccount(raw, state);
+  if (errors.length) throw new Error(errors.join(' '));
+  const account = normalizeAccount(raw);
+  state.accounts.push(account);
+  saveFinanceState(state);
+  REPORT_DATA = buildReportData(state.entries, { state });
+  return { restored: false, account };
+}
+
+function deleteAccount(code) {
+  const normalized = String(code ?? '').trim().toUpperCase();
+  const state = loadFinanceState();
+  const usage = getAccountUsage(normalized, state);
+  if (usage.used) {
+    throw new Error(`Akun ${normalized} tidak bisa dihapus karena ${usage.reason}.`);
+  }
+
+  state.accounts = Array.isArray(state.accounts) ? state.accounts : [];
+  state.deletedAccounts = Array.isArray(state.deletedAccounts) ? state.deletedAccounts : [];
+  const customIndex = state.accounts.findIndex(
+    (account) => String(account?.code ?? '').trim().toUpperCase() === normalized,
+  );
+  if (customIndex >= 0) {
+    state.accounts.splice(customIndex, 1);
+  } else if (ACCOUNTS.some((account) => account.code === normalized)) {
+    state.deletedAccounts = [...new Set([...state.deletedAccounts.map(String), normalized])];
+  } else {
+    return false;
+  }
+
+  saveFinanceState(state);
+  REPORT_DATA = buildReportData(state.entries, { state });
+  return true;
+}
+
 function normalizeFinanceState(raw) {
   if (Array.isArray(raw)) {
     return {
@@ -496,6 +646,8 @@ function normalizeFinanceState(raw) {
       entries: raw.map(normalizeEntry).filter(Boolean),
       openingBalances: {},
       settings: {},
+      accounts: [],
+      deletedAccounts: [],
     };
   }
   return {
@@ -503,11 +655,22 @@ function normalizeFinanceState(raw) {
     entries: (Array.isArray(raw?.entries) ? raw.entries : []).map(normalizeEntry).filter(Boolean),
     openingBalances: normalizeOpeningBalances(raw?.openingBalances),
     settings: raw?.settings && typeof raw.settings === 'object' ? raw.settings : {},
+    accounts: (Array.isArray(raw?.accounts) ? raw.accounts : []).map(normalizeAccount).filter(Boolean),
+    deletedAccounts: [...new Set(
+      (Array.isArray(raw?.deletedAccounts) ? raw.deletedAccounts : []).map(String).filter(Boolean),
+    )],
   };
 }
 
 function emptyFinanceState() {
-  return { version: FINANCE_SCHEMA_VERSION, entries: [], openingBalances: {}, settings: {} };
+  return {
+    version: FINANCE_SCHEMA_VERSION,
+    entries: [],
+    openingBalances: {},
+    settings: {},
+    accounts: [],
+    deletedAccounts: [],
+  };
 }
 
 function loadFinanceState() {
@@ -549,8 +712,9 @@ function derivePeriod(entries) {
 
 function buildReportData(entries, options = {}) {
   const state = options.state || loadFinanceState();
+  const accounts = getAccountList(state);
   const openingBalances = options.openingBalances || state.openingBalances || {};
-  const trialBalance = buildTrialBalance(ACCOUNTS, entries, { openingBalances });
+  const trialBalance = buildTrialBalance(accounts, entries, { openingBalances });
   const inventory = buildInventory(entries, INVENTORY_ITEMS);
   const validationErrors = entries.flatMap((entry, index) => validateEntry(entry, index));
   const signed = (row) => {
@@ -562,7 +726,7 @@ function buildReportData(entries, options = {}) {
   const pendapatan = roundMoney(totalOf('pendapatan'));
   const biaya = roundMoney(totalOf('biaya'));
   const laba = roundMoney(pendapatan - biaya);
-  const cashCodes = new Set(ACCOUNTS.filter((account) => CASH_EQUIVALENT_NAMES.has(account.name)).map((account) => account.code));
+  const cashCodes = new Set(accounts.filter((account) => CASH_EQUIVALENT_NAMES.has(account.name)).map((account) => account.code));
   const kas = roundMoney(
     trialBalance.rows.filter((row) => cashCodes.has(row.code)).reduce((sum, row) => sum + signed(row), 0),
   );
@@ -602,12 +766,12 @@ function buildReportData(entries, options = {}) {
       hasBlockingIssues,
     },
     summary: { pendapatan, biaya, laba, kas },
-    monthly: buildMonthly(ACCOUNTS, entries),
+    monthly: buildMonthly(accounts, entries),
     revenueAccounts: group('pendapatan'),
     expenseAccounts: group('biaya').sort((a, b) => b.amount - a.amount),
     assets,
     liabilities,
-    journal: buildJournalRows(ACCOUNTS, entries),
+    journal: buildJournalRows(accounts, entries),
     trialBalance: {
       rows: trialBalance.rows.map((row) => ({
         code: row.code,
