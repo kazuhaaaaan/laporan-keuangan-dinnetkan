@@ -42,6 +42,7 @@ function loadInventoryState() {
 function saveInventoryState(state) {
   try {
     localStorage.setItem(INVENTORY_STATE_KEY, JSON.stringify(state));
+    window.SupabaseSync?.pushInventory?.(state);
   } catch (error) {
     showToast('Data inventaris tidak dapat disimpan di browser ini.', 'error');
   }
@@ -1209,3 +1210,13 @@ renderDashboard();
 initNavigation();
 initTransactionForm();
 initAccountManager();
+
+document.addEventListener('dinetkan:remote-updated', () => {
+  syncReport();
+  renderDashboard();
+  refreshAccountOptions();
+  if (document.getElementById('accountBody')) renderAccountList();
+});
+document.addEventListener('dinetkan:sync-error', (event) => {
+  showToast(`Supabase: ${event.detail?.message || 'gagal sinkron'}`, 'error');
+});

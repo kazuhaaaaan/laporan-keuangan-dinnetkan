@@ -720,7 +720,10 @@ function loadFinanceState() {
 function saveFinanceState(state) {
   if (typeof localStorage === 'undefined') return false;
   try {
-    localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(normalizeFinanceState(state)));
+    const normalized = normalizeFinanceState(state);
+    localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(normalized));
+    const sync = typeof window !== 'undefined' ? window.SupabaseSync : null;
+    if (sync && !sync.isApplyingRemote()) sync.pushFinance(normalized);
     return true;
   } catch (error) {
     return false;

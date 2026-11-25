@@ -12,6 +12,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 - Kolom akun pada Input Jurnal tetap berupa daftar pilihan, namun daftarnya bisa dicari dengan mengetik kode atau nama (combobox dengan `role="listbox"`).
 - Barang inventaris baru bisa dibuat langsung dari Input Jurnal dan langsung tersedia untuk mutasi serta halaman Inventaris.
 - Setiap jurnal yang disimpan otomatis tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca**.
+- Integrasi **Supabase** opsional: `supabase-config.js` + `supabase-sync.js` menyinkronkan state keuangan dan inventaris ke tabel `app_state` lewat REST; tombol **Tarik/Kirim** tersedia di sidebar. Panduan ada di `SUPABASE.md` dan SQL di `supabase/schema.sql`.
 - Manajemen kode akun di web: tambah akun kustom, hapus akun yang belum dipakai, dan sinkronisasi ke laporan serta cadangan JSON.
 - `data.js`
   - `getInventoryItemDefinitions()` menggabungkan barang bawaan dan barang lokal dari localStorage sehingga mutasi jurnal mengenali barang yang dibuat dari Input Jurnal; ID barang lokal dipertahankan agar transaksi turunan tampil di halaman Inventaris.
@@ -80,7 +81,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 - `node --check data.js`, `node --check app.js`, `node --check inventaris/app.js` → OK.
 - `node tools/parity-test.js` → `PASS 15`, `DEVIATION 1`, `BLOCKED 5`, `SKIP 2`, `FAIL 0`.
-- `node tools/smoke-test.js` → 76 dari 76 pemeriksaan PASS (ID tiap halaman, redirect, combobox akun, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test).
+- `node tools/smoke-test.js` → 78 dari 78 pemeriksaan PASS (ID tiap halaman, redirect, combobox akun, skrip/config Supabase, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test).
 
 ## Catatan versi
 

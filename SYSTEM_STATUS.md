@@ -51,7 +51,7 @@ Hasil terakhir:
 ```text
 syntax checks        : 3/3 OK
 parity-test.js       : PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2 | FAIL 0
-smoke-test.js        : 76/76 PASS
+smoke-test.js        : 78/78 PASS
 ```
 
 Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARITY_TEST.md`.
@@ -61,7 +61,10 @@ Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARI
 | File | Status | Catatan |
 |---|---|---|
 | `data.js` | Dimodifikasi | Mesin hitung, 124 akun, storage versi, diagnostik, daftar barang bawaan + lokal |
-| `app.js` | Dimodifikasi | Renderer/page guard, filter, banner, form multi-baris, cadangan, aksi jurnal |
+| `app.js` | Dimodifikasi | Renderer/page guard, filter, banner, form multi-baris, cadangan, aksi jurnal, listener sinkron |
+| `supabase-config.js` | Baru | URL project, anon key, nama tabel, flag auto pull/push |
+| `supabase-sync.js` | Baru | REST sync ke `app_state`, status sidebar, tombol Tarik/Kirim |
+| `supabase/schema.sql` | Baru | DDL tabel `app_state` + policy RLS |
 | `index.html` | Dimodifikasi | Halaman ringkasan + analisis, branding, banner, periode dinamis |
 | `kode-akun.html` | Baru | Halaman kelola kode akun |
 | `input-jurnal.html` | Baru | Form jurnal per baris + tabel pendataan yang bisa diubah/dihapus |
@@ -104,6 +107,7 @@ Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keu
 7. Barang baru bisa ditambahkan dari panel mutasi di Input Jurnal; barang tersebut masuk ke `dinetkan-inventory-v1` dan dapat dipilih untuk mutasi sekaligus tampil di halaman Inventaris.
 8. Setelah jurnal disimpan, transaksi langsung tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca** karena keempatnya dibangun dari `REPORT_DATA` yang sama.
 9. Setiap menu sidebar membuka halamannya sendiri; **Ringkasan** dan **Analisis** tetap merupakan bagian dari `index.html`, sedangkan **Inventaris** membuka `inventaris/index.html` dan tautan baliknya memakai `../index.html`.
+10. Supabase bersifat opsional dan nonaktif sampai `supabase-config.js` diisi serta `enabled` diubah ke `true`. Jika aktif, state keuangan/inventaris ditarik saat halaman dibuka dan dikirim otomatis setelah perubahan; tombol **Tarik/Kirim** di sidebar tersedia untuk sinkron manual.
 
 ## 8. Item BLOCKED / SKIP aktif
 

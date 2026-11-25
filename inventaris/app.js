@@ -105,6 +105,7 @@ function refreshMergedTransactions() {
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.SupabaseSync?.pushInventory?.(state);
   } catch (error) {
     toast('Data tidak dapat disimpan di browser ini.', 'error');
   }
@@ -1227,6 +1228,19 @@ function initEvents() {
   );
   sections.forEach((section) => observer.observe(section));
 }
+
+window.refreshInventoryFromStorage = () => {
+  state = loadState();
+  refreshMergedTransactions();
+  renderAll();
+};
+
+document.addEventListener('dinetkan:remote-updated', () => {
+  window.refreshInventoryFromStorage();
+});
+document.addEventListener('dinetkan:sync-error', (event) => {
+  toast(`Supabase: ${event.detail?.message || 'gagal sinkron'}`, 'error');
+});
 
 $('trxDate').value = todayISO();
 resetItemForm();

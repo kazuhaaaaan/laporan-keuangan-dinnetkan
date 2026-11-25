@@ -93,6 +93,27 @@ check(
   'combobox dengan daftar, bukan datalist',
 );
 
+const supabaseConfig = fs.readFileSync(path.join(ROOT, 'supabase-config.js'), 'utf8');
+const supabaseSchema = fs.readFileSync(path.join(ROOT, 'supabase/schema.sql'), 'utf8');
+check(
+  'supabase: konfigurasi dan skema SQL',
+  supabaseConfig.includes('window.DINETKAN_SUPABASE')
+    && supabaseConfig.includes('YOUR_PROJECT.supabase.co')
+    && supabaseSchema.includes('create table if not exists public.app_state')
+    && supabaseSchema.includes('enable row level security'),
+  'template config dan tabel app_state tersedia',
+);
+
+const missingSyncScripts = allPages.filter((page) => {
+  const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
+  return !html.includes('supabase-config.js') || !html.includes('supabase-sync.js');
+});
+check(
+  'supabase: skrip termuat di semua halaman',
+  missingSyncScripts.length === 0,
+  missingSyncScripts.length ? `hilang di ${missingSyncScripts.join(', ')}` : `${allPages.length} halaman`,
+);
+
 function createEngine(storage = {}) {
   const store = { ...storage };
   const localStorage = {
