@@ -40,13 +40,13 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
         Analisis
       </a>
-      <a class="nav-link" href="#input-transaksi">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        Input Data
-      </a>
       <a class="nav-link" href="#kode-akun">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5v14M12 9h5M12 13h5" /></svg>
         Kode Akun
+      </a>
+      <a class="nav-link" href="#input-transaksi">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Input Data
       </a>
       <a class="nav-link" href="#jurnal">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M12 9h5M12 13h5" /></svg>
@@ -193,6 +193,81 @@
       </article>
     </section>
 
+    <section class="panel" id="kode-akun">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">MASTER DATA</p>
+          <h2>Kode Akun</h2>
+          <p class="panel-sub">Tambah kode akun baru atau hapus akun yang belum dipakai transaksi maupun saldo awal.</p>
+        </div>
+      </div>
+
+      <form id="accountForm" class="journal-form">
+        <div class="form-card-section">
+          <div class="form-section-header">
+            <span class="section-badge">+</span>
+            <div>
+              <h3>Tambah Akun</h3>
+              <p class="form-section-sub">Kode harus unik. Jenis menentukan laporan dan posisi normal bawaan.</p>
+            </div>
+          </div>
+
+          <div class="journal-fields-grid">
+            <label class="field">
+              <span>Kode Akun *</span>
+              <input type="text" id="acctCode" placeholder="Contoh: 5.1.70" autocomplete="off" required />
+            </label>
+            <label class="field">
+              <span>Nama Akun *</span>
+              <input type="text" id="acctName" placeholder="Contoh: BIAYA LAINNYA" autocomplete="off" required />
+            </label>
+            <label class="field">
+              <span>Jenis *</span>
+              <select id="acctType" required>
+                <option value="aset">Aset (Neraca)</option>
+                <option value="liabilitas">Liabilitas (Neraca)</option>
+                <option value="ekuitas">Ekuitas (Neraca)</option>
+                <option value="pendapatan">Pendapatan (Laba Rugi)</option>
+                <option value="biaya">Biaya (Laba Rugi)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Posisi Normal *</span>
+              <select id="acctSide" required>
+                <option value="debet">Debet</option>
+                <option value="kredit">Kredit</option>
+              </select>
+            </label>
+          </div>
+          <p id="accountStatus" class="form-status" role="status"></p>
+        </div>
+      </form>
+
+      <div class="filters account-toolbar">
+        <label class="field search-field">
+          <span>Cari akun</span>
+          <input type="search" id="accountSearch" placeholder="Cari kode atau nama akun" autocomplete="off" />
+        </label>
+        <span class="account-count" id="accountCount"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table account-table">
+          <thead>
+            <tr>
+              <th>Kode</th>
+              <th>Nama Akun</th>
+              <th>Jenis</th>
+              <th>Posisi</th>
+              <th>Laporan</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="accountBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel" id="input-transaksi">
       <div class="panel-head">
         <div>
@@ -288,81 +363,6 @@
           <span id="formStatus" class="form-status" role="status"></span>
         </div>
       </form>
-    </section>
-
-    <section class="panel" id="kode-akun">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">MASTER DATA</p>
-          <h2>Kode Akun</h2>
-          <p class="panel-sub">Tambah kode akun baru atau hapus akun yang belum dipakai transaksi maupun saldo awal.</p>
-        </div>
-      </div>
-
-      <form id="accountForm" class="journal-form">
-        <div class="form-card-section">
-          <div class="form-section-header">
-            <span class="section-badge">+</span>
-            <div>
-              <h3>Tambah Akun</h3>
-              <p class="form-section-sub">Kode harus unik. Jenis menentukan laporan dan posisi normal bawaan.</p>
-            </div>
-          </div>
-
-          <div class="journal-fields-grid">
-            <label class="field">
-              <span>Kode Akun *</span>
-              <input type="text" id="acctCode" placeholder="Contoh: 5.1.70" autocomplete="off" required />
-            </label>
-            <label class="field">
-              <span>Nama Akun *</span>
-              <input type="text" id="acctName" placeholder="Contoh: BIAYA LAINNYA" autocomplete="off" required />
-            </label>
-            <label class="field">
-              <span>Jenis *</span>
-              <select id="acctType" required>
-                <option value="aset">Aset (Neraca)</option>
-                <option value="liabilitas">Liabilitas (Neraca)</option>
-                <option value="ekuitas">Ekuitas (Neraca)</option>
-                <option value="pendapatan">Pendapatan (Laba Rugi)</option>
-                <option value="biaya">Biaya (Laba Rugi)</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Posisi Normal *</span>
-              <select id="acctSide" required>
-                <option value="debet">Debet</option>
-                <option value="kredit">Kredit</option>
-              </select>
-            </label>
-          </div>
-          <p id="accountStatus" class="form-status" role="status"></p>
-        </div>
-      </form>
-
-      <div class="filters account-toolbar">
-        <label class="field search-field">
-          <span>Cari akun</span>
-          <input type="search" id="accountSearch" placeholder="Cari kode atau nama akun" autocomplete="off" />
-        </label>
-        <span class="account-count" id="accountCount"></span>
-      </div>
-
-      <div class="table-wrap">
-        <table class="data-table account-table">
-          <thead>
-            <tr>
-              <th>Kode</th>
-              <th>Nama Akun</th>
-              <th>Jenis</th>
-              <th>Posisi</th>
-              <th>Laporan</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="accountBody"></tbody>
-        </table>
-      </div>
     </section>
 
     <section class="panel" id="jurnal">
