@@ -6,6 +6,8 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 ### Added
 
+- Pemisahan halaman: `index.html` (ringkasan/analisis), `kode-akun.html`, `input-data.html`, `jurnal-umum.html`, `neraca-jalur.html`, `laba-rugi.html`, dan `neraca.html`. Inventaris tetap di `inventaris/index.html`.
+- Halaman **Laba Rugi** baru dengan tabel pendapatan, biaya, dan ringkasan laba/rugi bersih dari `REPORT_DATA`.
 - Manajemen kode akun di web: tambah akun kustom, hapus akun yang belum dipakai, dan sinkronisasi ke laporan serta cadangan JSON.
 - `data.js`
   - `SOURCE_ACCOUNT_CODES` + `sourceCode` pada 124 akun untuk memetakan kode serial `KODE AKUN!A` tanpa mengganti kode tampilan.
@@ -37,6 +39,9 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 ### Changed
 
+- `app.js` kini dipakai bersama oleh semua halaman: renderer dan inisialisasi yang elemennya tidak ada akan dilewati, sehingga tidak ada error saat membuka halaman tertentu.
+- Sidebar di semua halaman, termasuk inventaris, memuat tautan ke seluruh halaman laporan; tautan internal tetap dipakai untuk analisis dan bagian inventaris.
+- Handler hapus transaksi dipindahkan dari form input ke halaman Jurnal Umum agar tombol hapus tetap berfungsi setelah pemisahan halaman.
 - Branding UI diseragamkan ke `Dinetkan` di dashboard, inventaris, dan judul ekspor Excel.
 - Ejaan lama di seluruh file proyek diseragamkan menjadi `Dinetkan`, termasuk kunci localStorage; data pada kunci lama perlu dipulihkan dari cadangan.
 - Judul/deskripsi/footer dan catatan periode tidak lagi menuliskan `2025` secara statis; runtime memakai tanggal transaksi.
@@ -69,7 +74,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 - `node --check data.js`, `node --check app.js`, `node --check inventaris/app.js` → OK.
 - `node tools/parity-test.js` → `PASS 15`, `DEVIATION 1`, `BLOCKED 5`, `SKIP 2`, `FAIL 0`.
-- `node tools/smoke-test.js` → 8 dari 8 pemeriksaan PASS.
+- `node tools/smoke-test.js` → 72 dari 72 pemeriksaan PASS (ID tiap halaman, tautan lintas halaman, dan unit test).
 
 ## Catatan versi
 

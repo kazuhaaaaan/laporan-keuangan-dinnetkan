@@ -78,6 +78,7 @@ button {
   color: #cbd5e1;
   z-index: 20;
   box-shadow: 4px 0 24px rgba(15, 23, 42, 0.08);
+  overflow-y: auto;
 }
 
 .brand {
@@ -123,6 +124,15 @@ button {
 .nav {
   display: grid;
   gap: 6px;
+}
+
+.nav-section-label {
+  margin: 10px 14px 2px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .nav-link {
@@ -1137,6 +1147,41 @@ h3 {
 .account-table .danger-btn {
   padding: 6px 10px;
   font-size: 12px;
+}
+
+.income-summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.income-summary div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.income-summary strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.income-summary .income-total {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.income-summary .income-total strong {
+  color: #12a678;
 }
 
 .pagination {

@@ -5,9 +5,18 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
+const mainPages = [
+  'index.html',
+  'kode-akun.html',
+  'input-data.html',
+  'jurnal-umum.html',
+  'neraca-jalur.html',
+  'laba-rugi.html',
+  'neraca.html',
+];
 const pairs = [
-  ['app.js', 'index.html'],
-  ['inventaris/app.js', 'inventaris/index.html'],
+  ['app.js', mainPages],
+  ['inventaris/app.js', ['inventaris/index.html']],
 ];
 
 let failed = false;
@@ -16,10 +25,14 @@ const check = (name, ok, detail = '') => {
   if (!ok) failed = true;
 };
 
-for (const [jsFile, htmlFile] of pairs) {
+const idsFrom = (file) => {
+  const html = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  return new Set([...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]));
+};
+
+for (const [jsFile, htmlFiles] of pairs) {
   const js = fs.readFileSync(path.join(ROOT, jsFile), 'utf8');
-  const html = fs.readFileSync(path.join(ROOT, htmlFile), 'utf8');
-  const htmlIds = new Set([...html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)].map((match) => match[1]));
+  const htmlIds = new Set(htmlFiles.flatMap((file) => [...idsFrom(file)]));
   const referenced = new Set([
     ...[...js.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)].map((match) => match[1]),
     ...[...js.matchAll(/\$\(['"]([^'"]+)['"]\)/g)].map((match) => match[1]),
@@ -28,14 +41,39 @@ for (const [jsFile, htmlFile] of pairs) {
   check(`${jsFile}: ID HTML`, missing.length === 0, `${referenced.size} direferensikan, ${missing.length} hilang${missing.length ? ` (${missing.join(', ')})` : ''}`);
 }
 
-const navigationLinks = [
-  ['index.html', 'inventaris/index.html'],
-  ['inventaris/index.html', '../index.html'],
+const commonIds = [
+  'retrievedAt', 'pageEyebrow', 'validationBanner', 'toastContainer',
+  'sidebar', 'mobileToggle', 'sidebarBackdrop', 'sidebarClose',
+  'sourceLink', 'sheetBtn', 'footerSource', 'printBtn',
 ];
-for (const [source, href] of navigationLinks) {
+const pageIds = {
+  'index.html': ['kpiRevenue', 'monthlyChart', 'costCount', 'compositionDonut'],
+  'kode-akun.html': ['accountForm', 'accountStatus', 'accountSearch', 'accountCount', 'accountBody', 'acctCode', 'acctName', 'acctType', 'acctSide'],
+  'input-data.html': ['journalForm', 'txDate', 'txDescription', 'txDebit', 'txCredit', 'txAmount', 'extraLines', 'txAddLineBtn', 'txItem', 'txMutation', 'txQuantity', 'formStatus', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
+  'jurnal-umum.html': ['journalSearch', 'monthFilter', 'accountFilter', 'typeFilter', 'journalBody', 'journalCount', 'journalTotals', 'pageInfo', 'prevPage', 'nextPage', 'exportBtn'],
+  'neraca-jalur.html': ['worksheetBody', 'worksheetMeta'],
+  'laba-rugi.html': ['revenueBody', 'expenseBody', 'incomeMeta', 'incomeNote', 'incomeSummary'],
+  'neraca.html': ['assetBody', 'liabilityBody', 'balanceNote'],
+};
+for (const page of mainPages) {
+  const htmlIds = idsFrom(page);
+  const required = [...commonIds, ...(pageIds[page] || [])];
+  const missing = required.filter((id) => !htmlIds.has(id));
+  check(`${page}: ID halaman`, missing.length === 0, `${required.length} wajib, ${missing.length} hilang${missing.length ? ` (${missing.join(', ')})` : ''}`);
+}
+
+const allPages = [...mainPages, 'inventaris/index.html'];
+for (const source of allPages) {
   const html = fs.readFileSync(path.join(ROOT, source), 'utf8');
-  const target = path.resolve(ROOT, path.dirname(source), href);
-  check(`${source}: tautan ${href}`, html.includes(`href="${href}"`) && fs.existsSync(target), fs.existsSync(target) ? 'file ada' : 'file tidak ada');
+  const base = path.dirname(source);
+  for (const targetPage of allPages) {
+    if (targetPage === source) continue;
+    const href = base === '.'
+      ? targetPage
+      : path.relative(base, targetPage).replace(/\\/g, '/');
+    const target = path.resolve(ROOT, base, href);
+    check(`${source}: tautan ${href}`, html.includes(`href="${href}"`) && fs.existsSync(target), fs.existsSync(target) ? 'file ada' : 'file tidak ada');
+  }
 }
 
 function createEngine(storage = {}) {

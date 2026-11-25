@@ -1199,7 +1199,7 @@ function initEvents() {
   const sidebar = $('sidebar');
   const backdrop = $('sidebarBackdrop');
   const closeButton = $('sidebarClose');
-  const links = [...document.querySelectorAll('.nav-link')];
+  const links = [...document.querySelectorAll('.nav-link')].filter((link) => link.getAttribute('href').startsWith('#'));
 
   const setSidebar = (open) => {
     sidebar.classList.toggle('open', open);

@@ -2,7 +2,7 @@
 
 ## 1. Ringkasan
 
-Situs laporan keuangan ini adalah aplikasi statis HTML/CSS/JS tanpa build tool, `package.json`, atau server. Perhitungan laporan terpusat di `data.js`; tampilan di `app.js`, `index.html`, `styles.css`, dan halaman inventaris di `inventaris/`.
+Situs laporan keuangan ini adalah aplikasi statis HTML/CSS/JS tanpa build tool, `package.json`, atau server. Perhitungan laporan terpusat di `data.js`; tampilan memakai `app.js` dan `styles.css` secara bersama oleh halaman `index.html`, `kode-akun.html`, `input-data.html`, `jurnal-umum.html`, `neraca-jalur.html`, `laba-rugi.html`, `neraca.html`, serta halaman inventaris di `inventaris/`.
 
 Status saat ini: **siap dipakai dengan batasan data sumber yang terdokumentasi**. Tidak ada `FAIL` pada pengujian parity. Angka yang tidak dapat diverifikasi atau memang bermasalah diberi status `BLOCKED`, `DEVIATION`, atau `SKIP` — bukan `PASS`.
 
@@ -51,7 +51,7 @@ Hasil terakhir:
 ```text
 syntax checks        : 3/3 OK
 parity-test.js       : PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2 | FAIL 0
-smoke-test.js        : 8/8 PASS
+smoke-test.js        : 72/72 PASS
 ```
 
 Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARITY_TEST.md`.
@@ -61,14 +61,20 @@ Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARI
 | File | Status | Catatan |
 |---|---|---|
 | `data.js` | Dimodifikasi | Mesin hitung, 124 akun, storage versi, diagnostik |
-| `app.js` | Dimodifikasi | Dashboard, filter, banner, form multi-baris, cadangan |
-| `index.html` | Dimodifikasi | Branding, elemen validasi/cadangan/baris tambahan, periode dinamis |
-| `styles.css` | Dimodifikasi | 3 blok gaya tambahan; palet/font/layout lama dipertahankan |
-| `inventaris/app.js` | Dimodifikasi | Storage versi, merge transaksi, import validasi, tanpa reseed destruktif |
-| `inventaris/index.html` | Dimodifikasi | Branding + penjelasan tanpa jurnal otomatis |
+| `app.js` | Dimodifikasi | Renderer/page guard, filter, banner, form multi-baris, cadangan, aksi jurnal |
+| `index.html` | Dimodifikasi | Halaman ringkasan + analisis, branding, banner, periode dinamis |
+| `kode-akun.html` | Baru | Halaman kelola kode akun |
+| `input-data.html` | Baru | Halaman input jurnal dan cadangan |
+| `jurnal-umum.html` | Baru | Halaman filter, pagination, ekspor, dan hapus transaksi |
+| `neraca-jalur.html` | Baru | Halaman worksheet neraca jalur |
+| `laba-rugi.html` | Baru | Halaman laporan laba rugi |
+| `neraca.html` | Baru | Halaman posisi aset/liabilitas/ekuitas |
+| `styles.css` | Dimodifikasi | Gaya ringkasan laba rugi, label sidebar, sidebar dapat digulir |
+| `inventaris/app.js` | Dimodifikasi | Storage versi, merge transaksi, import validasi, filter tautan internal |
+| `inventaris/index.html` | Dimodifikasi | Branding, tautan ke semua halaman laporan, penjelasan tanpa jurnal otomatis |
 | `inventaris/styles.css` | Tidak diubah | Styling aset dipertahankan |
 | `tools/parity-test.js` | Baru | Pembaca XLSX + engine parity |
-| `tools/smoke-test.js` | Baru | Uji statis dan unit ringan |
+| `tools/smoke-test.js` | Dimodifikasi | Uji ID per halaman, tautan lintas halaman, dan unit ringan |
 | `tools/parity-results.json` | Baru | Output parity test |
 | `*.md` | Baru | Tujuh dokumen audit/fix/parity/status |
 
@@ -94,7 +100,7 @@ Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keu
 4. Penurunan harga hanya mengubah nilai barang di laporan inventaris. Tidak ada jurnal penyusutan otomatis sampai kebijakan ditetapkan.
 5. Filter bulan memakai `YYYY-MM`, sehingga Januari 2025 dan Januari 2026 tidak lagi bercampur.
 6. Form jurnal dapat memiliki lebih dari dua baris; total debit harus sama dengan total kredit.
-7. Menu sidebar **Inventaris** langsung membuka `inventaris/index.html`; tautan balik memakai `../index.html`.
+7. Setiap menu sidebar membuka halamannya sendiri; **Ringkasan** dan **Analisis** tetap merupakan bagian dari `index.html`, sedangkan **Inventaris** membuka `inventaris/index.html` dan tautan baliknya memakai `../index.html`.
 
 ## 8. Item BLOCKED / SKIP aktif
 
@@ -114,5 +120,5 @@ Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keu
 - Tidak ada data historis yang dihapus atau ditimpa.
 - Tidak ada transaksi dummy atau jurnal penyeimbang yang dibuat.
 - Tidak ada hardcoding angka agar laporan tampak seimbang.
-- UI/UX lama (sidebar, navigasi, warna, tipografi, dashboard, halaman inventaris) dipertahankan; perubahan bersifat tambahan dan perbaikan perilaku.
+- UI/UX lama (sidebar, warna, tipografi, ringkasan dashboard, dan halaman inventaris) dipertahankan; bagian laporan kini dibuka sebagai halaman terpisah tanpa mengubah logika perhitungan.
 - Status ini hanya menyatakan kesesuaian dengan workbook dan kode yang ada, bukan opini audit akuntansi formal.

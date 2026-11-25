@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dashboard laporan keuangan Dinetkan" />
+  <title>Laporan Keuangan Dinetkan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="neraca">
+  <div class="mobile-topbar">
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Buka navigasi" aria-controls="sidebar" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+    </button>
+    <span class="mobile-topbar-title">Dinetkan</span>
+  </div>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="sidebarClose" aria-label="Tutup navigasi">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </button>
+    <a class="brand" href="index.html">
+      <span class="brand-mark">D</span>
+      <span>
+        <strong>Dinetkan</strong>
+        <small>Financial Report</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Navigasi utama">
+      <a class="nav-link" href="index.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l9-9 9 9M5 10v10h14V10M9 20v-6h6v6" /></svg>
+        Ringkasan
+      </a>
+      <a class="nav-link" href="index.html#analisis">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
+        Analisis
+      </a>
+      <a class="nav-link" href="kode-akun.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5v14M12 9h5M12 13h5" /></svg>
+        Kode Akun
+      </a>
+      <a class="nav-link" href="input-data.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Input Data
+      </a>
+      <a class="nav-link" href="jurnal-umum.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M12 9h5M12 13h5" /></svg>
+        Jurnal Umum
+      </a>
+      <a class="nav-link" href="neraca-jalur.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM3 9h18M3 14h18M9 4v16" /></svg>
+        Neraca Jalur
+      </a>
+      <a class="nav-link" href="laba-rugi.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M6 14l4-4 3 3 5-6" /></svg>
+        Laba Rugi
+      </a>
+      <a class="nav-link active" href="neraca.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M7 7l-4 7h8L7 7zm10 0l-4 7h8l-4-7zM3 21h18" /></svg>
+        Neraca
+      </a>
+      <a class="nav-link" href="inventaris/index.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10" /></svg>
+        Inventaris
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="source-badge">
+        <span class="dot"></span>
+        <span>Sumber: input lokal</span>
+      </div>
+      <a class="source-link" id="sourceLink" href="#" target="_blank" rel="noreferrer">
+        Buka spreadsheet asli
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-9 9M19 14v5H5V5h5" /></svg>
+      </a>
+      <p class="retrieved" id="retrievedAt"></p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="page-header" id="ringkasan">
+      <div>
+        <p class="eyebrow" id="pageEyebrow">POSISI KEUANGAN</p>
+        <h1>Neraca</h1>
+        <p class="subtitle">Posisi aset, liabilitas, dan ekuitas akhir periode.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="printBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z" /></svg>
+          Cetak
+        </button>
+        <a class="btn btn-primary" id="sheetBtn" href="#" target="_blank" rel="noreferrer">
+          Buka Sheet
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-9 9M19 14v5H5V5h5" /></svg>
+        </a>
+      </div>
+    </header>
+
+    <div class="validation-banner" id="validationBanner" role="alert" hidden></div>
+
+    <section class="panel" id="neraca">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">POSISI KEUANGAN</p>
+          <h2>Neraca Ringkas</h2>
+          <p class="panel-sub" id="balanceNote">Aset dan liabilitas akhir periode.</p>
+        </div>
+      </div>
+      <div class="balance-grid">
+        <div>
+          <h3 class="balance-title">Aset</h3>
+          <table class="data-table">
+            <thead><tr><th>Akun</th><th>Uraian</th><th class="right">Jumlah</th></tr></thead>
+            <tbody id="assetBody"></tbody>
+          </table>
+        </div>
+        <div>
+          <h3 class="balance-title">Liabilitas &amp; Ekuitas</h3>
+          <table class="data-table">
+            <thead><tr><th>Akun</th><th>Uraian</th><th class="right">Jumlah</th></tr></thead>
+            <tbody id="liabilityBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Dashboard pendukung laporan keuangan Dinetkan.</span>
+      <a id="footerSource" href="#" target="_blank" rel="noreferrer">Sumber data</a>
+    </footer>
+  </main>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

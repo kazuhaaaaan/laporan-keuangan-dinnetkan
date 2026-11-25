@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body data-page="index">
   <div class="mobile-topbar">
     <button class="mobile-toggle" id="mobileToggle" aria-label="Buka navigasi" aria-controls="sidebar" aria-expanded="false">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -40,23 +40,27 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
         Analisis
       </a>
-      <a class="nav-link" href="#kode-akun">
+      <a class="nav-link" href="kode-akun.html">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5v14M12 9h5M12 13h5" /></svg>
         Kode Akun
       </a>
-      <a class="nav-link" href="#input-transaksi">
+      <a class="nav-link" href="input-data.html">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         Input Data
       </a>
-      <a class="nav-link" href="#jurnal">
+      <a class="nav-link" href="jurnal-umum.html">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 4v16M12 9h5M12 13h5" /></svg>
         Jurnal Umum
       </a>
-      <a class="nav-link" href="#neraca-jalur">
+      <a class="nav-link" href="neraca-jalur.html">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v16H3zM3 9h18M3 14h18M9 4v16" /></svg>
         Neraca Jalur
       </a>
-      <a class="nav-link" href="#neraca">
+      <a class="nav-link" href="laba-rugi.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M6 14l4-4 3 3 5-6" /></svg>
+        Laba Rugi
+      </a>
+      <a class="nav-link" href="neraca.html">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 7h14M7 7l-4 7h8L7 7zm10 0l-4 7h8l-4-7zM3 21h18" /></svg>
         Neraca
       </a>
@@ -191,305 +195,6 @@
         </div>
         <div class="insight" id="cashInsight"></div>
       </article>
-    </section>
-
-    <section class="panel" id="kode-akun">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">MASTER DATA</p>
-          <h2>Kode Akun</h2>
-          <p class="panel-sub">Tambah kode akun baru atau hapus akun yang belum dipakai transaksi maupun saldo awal.</p>
-        </div>
-      </div>
-
-      <form id="accountForm" class="journal-form">
-        <div class="form-card-section">
-          <div class="form-section-header">
-            <span class="section-badge">+</span>
-            <div>
-              <h3>Tambah Akun</h3>
-              <p class="form-section-sub">Kode harus unik. Jenis menentukan laporan dan posisi normal bawaan.</p>
-            </div>
-          </div>
-
-          <div class="journal-fields-grid">
-            <label class="field">
-              <span>Kode Akun *</span>
-              <input type="text" id="acctCode" placeholder="Contoh: 5.1.70" autocomplete="off" required />
-            </label>
-            <label class="field">
-              <span>Nama Akun *</span>
-              <input type="text" id="acctName" placeholder="Contoh: BIAYA LAINNYA" autocomplete="off" required />
-            </label>
-            <label class="field">
-              <span>Jenis *</span>
-              <select id="acctType" required>
-                <option value="aset">Aset (Neraca)</option>
-                <option value="liabilitas">Liabilitas (Neraca)</option>
-                <option value="ekuitas">Ekuitas (Neraca)</option>
-                <option value="pendapatan">Pendapatan (Laba Rugi)</option>
-                <option value="biaya">Biaya (Laba Rugi)</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Posisi Normal *</span>
-              <select id="acctSide" required>
-                <option value="debet">Debet</option>
-                <option value="kredit">Kredit</option>
-              </select>
-            </label>
-          </div>
-          <p id="accountStatus" class="form-status" role="status"></p>
-        </div>
-      </form>
-
-      <div class="filters account-toolbar">
-        <label class="field search-field">
-          <span>Cari akun</span>
-          <input type="search" id="accountSearch" placeholder="Cari kode atau nama akun" autocomplete="off" />
-        </label>
-        <span class="account-count" id="accountCount"></span>
-      </div>
-
-      <div class="table-wrap">
-        <table class="data-table account-table">
-          <thead>
-            <tr>
-              <th>Kode</th>
-              <th>Nama Akun</th>
-              <th>Jenis</th>
-              <th>Posisi</th>
-              <th>Laporan</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="accountBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel" id="input-transaksi">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">INPUT DATA</p>
-          <h2>Tambah Transaksi</h2>
-          <p class="panel-sub">Jurnal berimbang dengan satu atau lebih akun debit dan kredit. Mutasi barang opsional (khusus akun Persediaan).</p>
-        </div>
-        <div class="header-actions">
-          <button class="btn btn-outline" id="backupJournalBtn" type="button">Unduh Cadangan</button>
-          <button class="btn btn-outline" id="importJournalBtn" type="button">Muat Cadangan</button>
-          <input type="file" id="journalImportFile" accept="application/json,.json" hidden />
-          <button class="btn btn-ghost danger-btn" id="clearJournalBtn" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            Kosongkan Jurnal
-          </button>
-        </div>
-      </div>
-
-      <form id="journalForm" class="journal-form">
-        <div class="form-card-section">
-          <div class="form-section-header">
-            <span class="section-badge">1</span>
-            <div>
-              <h3>Informasi Transaksi &amp; Akun</h3>
-              <p class="form-section-sub">Tentukan tanggal, keterangan singkat, serta akun debit dan kredit yang berimbang.</p>
-            </div>
-          </div>
-          
-          <div class="journal-fields-grid">
-            <label class="field field-date">
-              <span>Tanggal *</span>
-              <input type="date" id="txDate" required />
-            </label>
-            <label class="field field-desc">
-              <span>Keterangan Transaksi *</span>
-              <input type="text" id="txDescription" placeholder="Contoh: Pembayaran internet bulanan pelanggan" autocomplete="off" required />
-            </label>
-            <label class="field field-debit">
-              <span>Akun Debet *</span>
-              <select id="txDebit" required></select>
-            </label>
-            <label class="field field-credit">
-              <span>Akun Kredit *</span>
-              <select id="txCredit" required></select>
-            </label>
-            <label class="field field-amount">
-              <span>Nominal (Rp) *</span>
-              <input type="number" id="txAmount" min="1" step="0.01" placeholder="Contoh: 1500000" required />
-            </label>
-          </div>
-
-          <div class="extra-lines" id="extraLines"></div>
-          <button class="btn btn-outline add-line-btn" id="txAddLineBtn" type="button">+ Tambah baris jurnal</button>
-        </div>
-
-        <div class="form-card-section inventory-box">
-          <div class="form-section-header">
-            <span class="section-badge inventory-badge">2</span>
-            <div>
-              <div class="title-with-pill">
-                <h3>Mutasi Inventaris Barang</h3>
-                <span class="pill-optional">Opsional</span>
-              </div>
-              <p class="form-section-sub">Gunakan bagian ini HANYA jika transaksi melibatkan akun <strong>1.2.13 PERSEDIAAN</strong>.</p>
-            </div>
-          </div>
-          
-          <div class="inventory-fields-grid">
-            <label class="field">
-              <span>Nama Barang</span>
-              <select id="txItem"><option value="">Tanpa mutasi barang</option></select>
-            </label>
-            <label class="field">
-              <span>Arah Mutasi</span>
-              <select id="txMutation">
-                <option value="">Tidak ada mutasi</option>
-                <option value="in">Barang Masuk (Debet Persediaan)</option>
-                <option value="out">Barang Keluar (Kredit Persediaan)</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Jumlah Barang (Qty)</span>
-              <input type="number" id="txQuantity" min="1" step="1" placeholder="0" />
-            </label>
-          </div>
-        </div>
-
-        <div class="form-actions-bar">
-          <button class="btn btn-primary btn-save" type="submit">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-            Simpan Transaksi
-          </button>
-          <span id="formStatus" class="form-status" role="status"></span>
-        </div>
-      </form>
-    </section>
-
-    <section class="panel" id="jurnal">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">DATA TRANSAKSI</p>
-          <h2>Jurnal Umum</h2>
-          <p class="panel-sub">Cari transaksi, saring per bulan atau akun, dan kelola baris jurnal.</p>
-        </div>
-        <button class="btn btn-outline" id="exportBtn" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
-          Unduh CSV
-        </button>
-      </div>
-
-      <div class="filters">
-        <label class="field search-field">
-          <span>Cari keterangan atau akun</span>
-          <input type="search" id="journalSearch" placeholder="Contoh: pembayaran internet" autocomplete="off" />
-        </label>
-        <label class="field">
-          <span>Bulan</span>
-          <select id="monthFilter"><option value="">Semua bulan</option></select>
-        </label>
-        <label class="field">
-          <span>Akun</span>
-          <select id="accountFilter"><option value="">Semua akun</option></select>
-        </label>
-        <label class="field">
-          <span>Jenis</span>
-          <select id="typeFilter">
-            <option value="">Semua jenis</option>
-            <option value="pendapatan">Pendapatan</option>
-            <option value="biaya">Biaya</option>
-            <option value="kas">Kas &amp; bank</option>
-            <option value="lainnya">Lainnya</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="table-summary">
-        <span id="journalCount"></span>
-        <span id="journalTotals"></span>
-      </div>
-
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>Keterangan</th>
-              <th>Akun</th>
-              <th class="right">Debet</th>
-              <th class="right">Kredit</th>
-              <th class="center" style="width: 70px;">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="journalBody"></tbody>
-        </table>
-      </div>
-
-      <div class="pagination">
-        <button class="btn btn-small" id="prevPage" type="button">Sebelumnya</button>
-        <span id="pageInfo"></span>
-        <button class="btn btn-small" id="nextPage" type="button">Berikutnya</button>
-      </div>
-    </section>
-
-    <section class="panel" id="neraca-jalur">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">WORKSHEET</p>
-          <h2>Neraca Jalur</h2>
-          <p class="panel-sub">Alur neraca saldo → laba rugi → neraca, mengikuti sheet “NERACA JALUR”.</p>
-        </div>
-        <span class="panel-meta" id="worksheetMeta"></span>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table worksheet-table">
-          <thead>
-            <tr>
-              <th rowspan="2">Akun</th>
-              <th rowspan="2">Uraian</th>
-              <th rowspan="2">Pos Saldo</th>
-              <th rowspan="2">Pos Laporan</th>
-              <th colspan="2">Neraca Saldo</th>
-              <th colspan="2">Laba Rugi</th>
-              <th colspan="2">Neraca</th>
-            </tr>
-            <tr>
-              <th class="right">Debet</th>
-              <th class="right">Kredit</th>
-              <th class="right">Debet</th>
-              <th class="right">Kredit</th>
-              <th class="right">Debet</th>
-              <th class="right">Kredit</th>
-            </tr>
-          </thead>
-          <tbody id="worksheetBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel" id="neraca">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">POSISI KEUANGAN</p>
-          <h2>Neraca Ringkas</h2>
-          <p class="panel-sub" id="balanceNote">Aset dan liabilitas akhir periode.</p>
-        </div>
-      </div>
-      <div class="balance-grid">
-        <div>
-          <h3 class="balance-title">Aset</h3>
-          <table class="data-table">
-            <thead><tr><th>Akun</th><th>Uraian</th><th class="right">Jumlah</th></tr></thead>
-            <tbody id="assetBody"></tbody>
-          </table>
-        </div>
-        <div>
-          <h3 class="balance-title">Liabilitas &amp; Ekuitas</h3>
-          <table class="data-table">
-            <thead><tr><th>Akun</th><th>Uraian</th><th class="right">Jumlah</th></tr></thead>
-            <tbody id="liabilityBody"></tbody>
-          </table>
-        </div>
-      </div>
     </section>
 
     <footer class="footer">
