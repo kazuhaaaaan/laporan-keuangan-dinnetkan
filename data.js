@@ -133,6 +133,31 @@ const INVENTORY_ITEMS = [
   { code: 'BRG-003', name: 'Splitter ODP 1:8', category: 'Jaringan', unit: 'pcs', location: 'Gudang B', price: 85000, minStock: 5 },
 ];
 
+function getInventoryItemDefinitions() {
+  const byCode = new Map(INVENTORY_ITEMS.map((item) => [item.code, { ...item }]));
+  try {
+    const parsed = JSON.parse(localStorage.getItem('dinetkan-inventory-v1') || 'null');
+    (parsed?.items || []).forEach((item) => {
+      if (!item || !item.code) return;
+      byCode.set(String(item.code), {
+        id: String(item.id || ''),
+        source: String(item.source || 'local'),
+        code: String(item.code),
+        name: String(item.name || ''),
+        category: String(item.category || ''),
+        unit: String(item.unit || ''),
+        location: String(item.location || ''),
+        price: Number(item.price) || 0,
+        minStock: Number(item.minStock) || 0,
+        initialStock: Number(item.initialStock) || 0,
+      });
+    });
+  } catch (error) {
+    // Inventaris lokal yang rusak tidak boleh menggagalkan laporan.
+  }
+  return [...byCode.values()];
+}
+
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 // Kode mentah pada sheet KODE AKUN (kolom A), urutan identik dengan ACCOUNTS.
@@ -315,8 +340,8 @@ function buildJournalRows(accounts, entries) {
 function buildInventory(entries, itemDefinitions) {
   const items = itemDefinitions.map((item, index) => ({
     ...item,
-    id: `item-dummy-${String(index + 1).padStart(3, '0')}`,
-    source: 'journal-derived',
+    id: item.id || `item-dummy-${String(index + 1).padStart(3, '0')}`,
+    source: item.source || 'journal-derived',
   }));
   const byCode = new Map(items.map((item) => [item.code, item]));
   const transactions = [];
@@ -715,7 +740,7 @@ function buildReportData(entries, options = {}) {
   const accounts = getAccountList(state);
   const openingBalances = options.openingBalances || state.openingBalances || {};
   const trialBalance = buildTrialBalance(accounts, entries, { openingBalances });
-  const inventory = buildInventory(entries, INVENTORY_ITEMS);
+  const inventory = buildInventory(entries, getInventoryItemDefinitions());
   const validationErrors = entries.flatMap((entry, index) => validateEntry(entry, index));
   const signed = (row) => {
     const normalSide = ['pendapatan', 'liabilitas', 'ekuitas'].includes(row.type) ? 'kredit' : 'debet';

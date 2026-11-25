@@ -153,8 +153,9 @@
           </div>
           <div class="journal-fields-grid">
             <label class="field">
-              <span>Akun *</span>
-              <select id="txAccount" required></select>
+              <span>Akun * (cari kode/nama)</span>
+              <input type="text" id="txAccount" list="accountOptions" placeholder="Ketik kode atau nama akun" autocomplete="off" required />
+              <datalist id="accountOptions"></datalist>
             </label>
             <label class="field">
               <span>Posisi *</span>
@@ -180,9 +181,35 @@
                 <h3>Mutasi Inventaris Barang</h3>
                 <span class="pill-optional">Opsional</span>
               </div>
-              <p class="form-section-sub">Gunakan bagian ini HANYA jika transaksi melibatkan akun <strong>1.2.13 PERSEDIAAN</strong>.</p>
+              <p class="form-section-sub">Gunakan bagian ini HANYA jika transaksi melibatkan akun <strong>1.2.13 PERSEDIAAN</strong>. Barang baru juga bisa dibuat langsung di sini.</p>
             </div>
           </div>
+          <details class="inventory-add">
+            <summary>Tambah barang baru ke inventaris</summary>
+            <div class="inventory-add-grid">
+              <label class="field">
+                <span>Kode Barang *</span>
+                <input type="text" id="invItemCode" placeholder="Contoh: BRG-004" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span>Nama Barang *</span>
+                <input type="text" id="invItemName" placeholder="Contoh: Modem Fiber" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span>Satuan</span>
+                <input type="text" id="invItemUnit" placeholder="unit" />
+              </label>
+              <label class="field">
+                <span>Harga (Rp)</span>
+                <input type="number" id="invItemPrice" min="0" step="0.01" value="0" />
+              </label>
+              <label class="field">
+                <span>Stok Awal</span>
+                <input type="number" id="invItemInitial" min="0" step="1" value="0" />
+              </label>
+            </div>
+            <button class="btn btn-outline" id="invAddBtn" type="button">Tambah Barang ke Inventaris</button>
+          </details>
           <div class="inventory-fields-grid">
             <label class="field">
               <span>Nama Barang</span>

@@ -16,6 +16,61 @@ function syncReport() {
   journal = report.journal;
 }
 
+const INVENTORY_STATE_KEY = 'dinetkan-inventory-v1';
+
+function loadInventoryState() {
+  try {
+    const raw = localStorage.getItem(INVENTORY_STATE_KEY);
+    if (!raw) {
+      return {
+        items: (REPORT_DATA.inventory?.items || []).map((item) => ({ ...item, source: item.source || 'journal-derived' })),
+        transactions: [],
+        depreciations: [],
+      };
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      items: Array.isArray(parsed?.items) ? parsed.items.filter((item) => item && item.id && item.code) : [],
+      transactions: Array.isArray(parsed?.transactions) ? parsed.transactions : [],
+      depreciations: Array.isArray(parsed?.depreciations) ? parsed.depreciations : [],
+    };
+  } catch (error) {
+    return { items: [], transactions: [], depreciations: [] };
+  }
+}
+
+function saveInventoryState(state) {
+  try {
+    localStorage.setItem(INVENTORY_STATE_KEY, JSON.stringify(state));
+  } catch (error) {
+    showToast('Data inventaris tidak dapat disimpan di browser ini.', 'error');
+  }
+}
+
+function addInventoryItemFromJournal(payload) {
+  const state = loadInventoryState();
+  const code = String(payload.code).trim().toUpperCase();
+  if (state.items.some((item) => String(item.code).toUpperCase() === code)) {
+    throw new Error(`Kode barang ${code} sudah digunakan.`);
+  }
+  const saved = {
+    id: `item-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`,
+    code,
+    name: String(payload.name).trim(),
+    category: String(payload.category || ''),
+    unit: String(payload.unit || ''),
+    location: String(payload.location || ''),
+    price: Number(payload.price) || 0,
+    minStock: Number(payload.minStock) || 0,
+    initialStock: Number(payload.initialStock) || 0,
+    source: 'local',
+  };
+  state.items.push(saved);
+  saveInventoryState(state);
+  syncReport();
+  return saved;
+}
+
 function renderDashboard() {
   initMeta();
   renderValidation();
@@ -369,17 +424,44 @@ function renderWorksheet() {
   meta.textContent = `${rows.length} akun · ${summary.laba >= 0 ? 'Laba' : 'Rugi'} ${money(Math.abs(summary.laba))}`;
 }
 
+function accountLabel(account) {
+  const sideLabel = account.side === 'debet' ? 'Debet' : 'Kredit';
+  return `${account.code} · ${account.name} (normal ${sideLabel})`;
+}
+
 function accountOptionsHtml() {
-  return getAccountList().map((account) => {
-    const sideLabel = account.side === 'debet' ? 'Debet' : 'Kredit';
-    return `<option value="${escapeHtml(account.code)}">${escapeHtml(account.code)} · ${escapeHtml(account.name)} (normal ${sideLabel})</option>`;
-  }).join('');
+  return getAccountList().map((account) =>
+    `<option value="${escapeHtml(account.code)}">${escapeHtml(accountLabel(account))}</option>`,
+  ).join('');
+}
+
+function resolveAccountInput(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  const accounts = getAccountList();
+  const needle = text.toLowerCase();
+  const exact = accounts.find((account) =>
+    account.code.toLowerCase() === needle
+    || accountLabel(account).toLowerCase() === needle
+    || account.name.toLowerCase() === needle,
+  );
+  if (exact) return exact;
+  const matches = accounts.filter((account) =>
+    `${account.code} ${account.name}`.toLowerCase().includes(needle),
+  );
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) {
+    throw new Error(`Akun "${text}" cocok dengan ${matches.length} akun. Pilih dari daftar atau gunakan kode lengkap.`);
+  }
+  throw new Error(`Akun "${text}" tidak ditemukan.`);
 }
 
 function refreshAccountOptions() {
+  const datalist = document.getElementById('accountOptions');
+  if (datalist) datalist.innerHTML = accountOptionsHtml();
   ['txDebit', 'txCredit', 'txAccount'].forEach((id) => {
     const select = document.getElementById(id);
-    if (!select) return;
+    if (!select || select.tagName !== 'SELECT') return;
     const selected = select.value;
     select.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
     select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : '';
@@ -590,6 +672,7 @@ function initTransactionForm() {
   const dateInput = document.getElementById('txDate');
   const descriptionInput = document.getElementById('txDescription');
   const account = document.getElementById('txAccount');
+  const accountOptions = document.getElementById('accountOptions');
   const side = document.getElementById('txSide');
   const amount = document.getElementById('txAmount');
   const item = document.getElementById('txItem');
@@ -600,7 +683,7 @@ function initTransactionForm() {
   const draftSummary = document.getElementById('pendataanSummary');
   const editInfo = document.getElementById('lineEditInfo');
   const addButton = document.getElementById('txAddLineBtn');
-  if (!dateInput || !descriptionInput || !account || !side || !amount || !item || !mutation || !quantity || !status || !draftBody || !draftSummary || !editInfo || !addButton) return;
+  if (!dateInput || !descriptionInput || !account || !accountOptions || !side || !amount || !item || !mutation || !quantity || !status || !draftBody || !draftSummary || !editInfo || !addButton) return;
 
   let pendingLines = [];
   let editingIndex = null;
@@ -658,16 +741,23 @@ function initTransactionForm() {
     setStatus('');
   };
 
-  account.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
-  INVENTORY_ITEMS.forEach((product) => {
-    const option = document.createElement('option');
-    option.value = product.code;
-    option.textContent = `${product.code} · ${product.name} (Rp${product.price.toLocaleString('id-ID')}/${product.unit})`;
-    item.appendChild(option);
-  });
+  accountOptions.innerHTML = accountOptionsHtml();
+
+  const fillItemOptions = () => {
+    const selected = item.value;
+    item.innerHTML = '<option value="">Tanpa mutasi barang</option>';
+    getInventoryItemDefinitions().forEach((product) => {
+      const option = document.createElement('option');
+      option.value = product.code;
+      option.textContent = `${product.code} · ${product.name} (Rp${product.price.toLocaleString('id-ID')}/${product.unit || '-'})`;
+      item.appendChild(option);
+    });
+    if (selected && [...item.options].some((option) => option.value === selected)) item.value = selected;
+  };
+  fillItemOptions();
 
   const updateAmount = () => {
-    const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
+    const product = getInventoryItemDefinitions().find((entry) => entry.code === item.value);
     const qty = Number(quantity.value);
     if (product && mutation.value && qty > 0) {
       amount.value = (product.price * qty).toFixed(2);
@@ -685,14 +775,14 @@ function initTransactionForm() {
     try {
       if (!dateInput.value) throw new Error('Tanggal wajib diisi.');
       if (!descriptionInput.value.trim()) throw new Error('Keterangan wajib diisi.');
-      const code = account.value;
-      if (!code) throw new Error('Pilih akun terlebih dahulu.');
+      const selected = resolveAccountInput(account.value);
+      if (!selected) throw new Error('Cari dan pilih akun terlebih dahulu.');
+      const code = selected.code;
       const posisi = side.value;
       if (!posisi) throw new Error('Pilih posisi Debet atau Kredit.');
       const nominal = Number(amount.value);
       if (!Number.isFinite(nominal) || nominal <= 0) throw new Error('Nominal harus lebih dari 0.');
-      const selected = getAccountList().find((entry) => entry.code === code);
-      if (selected && selected.side !== posisi) {
+      if (selected.side !== posisi) {
         throw new Error(`${selected.code} ${selected.name} normalnya di ${selected.side === 'debet' ? 'Debet' : 'Kredit'}. Sesuaikan posisi.`);
       }
 
@@ -711,13 +801,54 @@ function initTransactionForm() {
     }
   });
 
+  document.getElementById('invAddBtn')?.addEventListener('click', () => {
+    const codeField = document.getElementById('invItemCode');
+    const nameField = document.getElementById('invItemName');
+    const unitField = document.getElementById('invItemUnit');
+    const priceField = document.getElementById('invItemPrice');
+    const initialField = document.getElementById('invItemInitial');
+    if (!codeField || !nameField || !unitField || !priceField || !initialField) return;
+    try {
+      const code = codeField.value.trim().toUpperCase();
+      const name = nameField.value.trim();
+      if (!code) throw new Error('Kode barang wajib diisi.');
+      if (!name) throw new Error('Nama barang wajib diisi.');
+      const price = Number(priceField.value);
+      if (!Number.isFinite(price) || price < 0) throw new Error('Harga barang tidak valid.');
+      const saved = addInventoryItemFromJournal({
+        code,
+        name,
+        unit: unitField.value.trim(),
+        price,
+        initialStock: Math.max(0, Number(initialField.value) || 0),
+        category: '',
+        location: '',
+        minStock: 0,
+      });
+      fillItemOptions();
+      item.value = saved.code;
+      updateAmount();
+      codeField.value = '';
+      nameField.value = '';
+      unitField.value = '';
+      priceField.value = '0';
+      initialField.value = '0';
+      setStatus(`Barang ${saved.code} · ${saved.name} ditambahkan ke inventaris.`, 'success');
+      showToast(`Barang ${saved.code} tersedia untuk mutasi jurnal.`);
+    } catch (error) {
+      setStatus(error.message, 'error');
+      showToast(error.message, 'error');
+    }
+  });
+
   draftBody.addEventListener('click', (event) => {
     const editButton = event.target.closest('.edit-line-btn');
     if (editButton) {
       const index = Number(editButton.dataset.index);
       const line = pendingLines[index];
       if (!line) return;
-      account.value = line.code;
+      const selected = getAccountList().find((entry) => entry.code === line.code);
+      account.value = selected ? accountLabel(selected) : line.code;
       side.value = line.side;
       amount.value = String(line.amount);
       editingIndex = index;
@@ -765,7 +896,7 @@ function initTransactionForm() {
         ? { code: line.code, debit: line.amount, kredit: 0 }
         : { code: line.code, debit: 0, kredit: line.amount }));
 
-      const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
+      const product = getInventoryItemDefinitions().find((entry) => entry.code === item.value);
       const mutationType = mutation.value;
       const qty = Number(quantity.value);
       const stockLines = lines.filter((line) => line.code === '1.2.13');
@@ -798,8 +929,8 @@ function initTransactionForm() {
       renderDashboard();
       const count = loadJournalEntries().length;
       resetForm();
-      setStatus(`Tersimpan. Jurnal kini berisi ${count} transaksi.`, 'success');
-      showToast('Jurnal berhasil disimpan!');
+      setStatus(`Tersimpan (${count} transaksi). Data kini tampil di Jurnal Umum, Neraca Jalur, Laba Rugi, dan Neraca.`, 'success');
+      showToast('Jurnal tersimpan dan seluruh laporan diperbarui!');
     } catch (error) {
       setStatus(error.message, 'error');
       showToast(error.message, 'error');

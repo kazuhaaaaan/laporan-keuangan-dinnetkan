@@ -9,8 +9,12 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 - Pemisahan halaman: `index.html` (ringkasan/analisis), `kode-akun.html`, `input-jurnal.html`, `jurnal-umum.html`, `neraca-jalur.html`, `laba-rugi.html`, dan `neraca.html`. Inventaris tetap di `inventaris/index.html`. Link lama `input-data.html` dialihkan ke `input-jurnal.html`.
 - Halaman **Laba Rugi** baru dengan tabel pendapatan, biaya, dan ringkasan laba/rugi bersih dari `REPORT_DATA`.
 - Form **Input Jurnal** berbasis baris: tanggal & keterangan sekali per transaksi, lalu akun + posisi Debet/Kredit + nominal ditambahkan ke tabel **Pendataan Jurnal** yang bisa diubah/dihapus sebelum disimpan.
+- Kolom akun pada Input Jurnal bisa dicari dengan mengetik kode atau nama; daftar akun memakai `datalist`.
+- Barang inventaris baru bisa dibuat langsung dari Input Jurnal dan langsung tersedia untuk mutasi serta halaman Inventaris.
+- Setiap jurnal yang disimpan otomatis tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca**.
 - Manajemen kode akun di web: tambah akun kustom, hapus akun yang belum dipakai, dan sinkronisasi ke laporan serta cadangan JSON.
 - `data.js`
+  - `getInventoryItemDefinitions()` menggabungkan barang bawaan dan barang lokal dari localStorage sehingga mutasi jurnal mengenali barang yang dibuat dari Input Jurnal; ID barang lokal dipertahankan agar transaksi turunan tampil di halaman Inventaris.
   - `SOURCE_ACCOUNT_CODES` + `sourceCode` pada 124 akun untuk memetakan kode serial `KODE AKUN!A` tanpa mengganti kode tampilan.
   - `CASH_EQUIVALENT_NAMES` sebagai definisi tunggal kas setara kas.
   - `openingBalances` dalam state keuangan dan `resolveOpeningBalance()`.
@@ -76,7 +80,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 - `node --check data.js`, `node --check app.js`, `node --check inventaris/app.js` → OK.
 - `node tools/parity-test.js` → `PASS 15`, `DEVIATION 1`, `BLOCKED 5`, `SKIP 2`, `FAIL 0`.
-- `node tools/smoke-test.js` → 73 dari 73 pemeriksaan PASS (ID tiap halaman, redirect, tautan lintas halaman, dan unit test).
+- `node tools/smoke-test.js` → 75 dari 75 pemeriksaan PASS (ID tiap halaman, redirect, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test).
 
 ## Catatan versi
 

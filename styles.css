@@ -896,6 +896,28 @@ h3 {
   gap: 12px;
 }
 
+.inventory-add {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.inventory-add summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.inventory-add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
 .form-actions-bar {
   display: flex;
   align-items: center;
@@ -1223,12 +1245,12 @@ h3 {
   font-size: 14px;
 }
 
-.pendataan-summary.balance {
+.pendataan-summary.balanced {
   border-color: rgba(18, 166, 120, 0.4);
   background: #effcf7;
 }
 
-.pendataan-summary.balance strong {
+.pendataan-summary.balanced strong {
   color: #12a678;
 }
 
@@ -1519,7 +1541,9 @@ h3 {
 @media (max-width: 560px) {
   .kpi-grid,
   .filters,
-  .journal-fields-grid {
+  .journal-fields-grid,
+  .inventory-add-grid,
+  .pendataan-summary {
     grid-template-columns: 1fr;
   }
 

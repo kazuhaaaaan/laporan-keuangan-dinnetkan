@@ -49,7 +49,7 @@ const commonIds = [
 const pageIds = {
   'index.html': ['kpiRevenue', 'monthlyChart', 'costCount', 'compositionDonut'],
   'kode-akun.html': ['accountForm', 'accountStatus', 'accountSearch', 'accountCount', 'accountBody', 'acctCode', 'acctName', 'acctType', 'acctSide'],
-  'input-jurnal.html': ['journalForm', 'txDate', 'txDescription', 'txAccount', 'txSide', 'txAmount', 'txAddLineBtn', 'lineEditInfo', 'pendataanBody', 'pendataanSummary', 'saveJournalBtn', 'clearDraftBtn', 'formStatus', 'txItem', 'txMutation', 'txQuantity', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
+  'input-jurnal.html': ['journalForm', 'txDate', 'txDescription', 'txAccount', 'accountOptions', 'txSide', 'txAmount', 'txAddLineBtn', 'lineEditInfo', 'pendataanBody', 'pendataanSummary', 'saveJournalBtn', 'clearDraftBtn', 'formStatus', 'txItem', 'txMutation', 'txQuantity', 'invItemCode', 'invItemName', 'invItemUnit', 'invItemPrice', 'invItemInitial', 'invAddBtn', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
   'jurnal-umum.html': ['journalSearch', 'monthFilter', 'accountFilter', 'typeFilter', 'journalBody', 'journalCount', 'journalTotals', 'pageInfo', 'prevPage', 'nextPage', 'exportBtn'],
   'neraca-jalur.html': ['worksheetBody', 'worksheetMeta'],
   'laba-rugi.html': ['revenueBody', 'expenseBody', 'incomeMeta', 'incomeNote', 'incomeSummary'],
@@ -140,6 +140,52 @@ function createEngine(storage = {}) {
     'jurnal multi-baris',
     state.entries.length === 1 && state.entries[0].lines.length === 3 && report.journal.length === 3,
     `${state.entries[0]?.lines.length || 0} baris tersimpan, ${report.journal.length} baris laporan`,
+  );
+}
+
+// Transaksi baru harus langsung tampil di jurnal, worksheet, laba rugi, dan neraca.
+{
+  const engine = createEngine();
+  const report = engine.evaluate(`addJournalEntry({
+    ref: 'FLOW-1', date: '2025-07-01', description: 'alur laporan',
+    lines: [
+      { code: '1.1.10', debit: 2000, kredit: 0 },
+      { code: '3.1.10', debit: 0, kredit: 2000 }
+    ]
+  })`);
+  const inJournal = report.journal.some((row) => row[1] === 'alur laporan');
+  const inWorksheetSource = report.trialBalance.rows.some((row) => row.code === '1.1.10' && row.debit === 2000);
+  const inIncome = report.revenueAccounts.some((item) => item.code === '3.1.10' && item.amount === 2000);
+  const inBalance = report.assets.some((item) => item.code === '1.1.10' && item.amount === 2000);
+  check(
+    'jurnal masuk seluruh laporan',
+    inJournal && inWorksheetSource && inIncome && inBalance,
+    `jurnal=${inJournal}, worksheet=${inWorksheetSource}, laba rugi=${inIncome}, neraca=${inBalance}`,
+  );
+}
+
+// Barang yang dibuat dari Input Jurnal harus terhubung ke mutasi di Inventaris.
+{
+  const engine = createEngine({
+    'dinetkan-inventory-v1': JSON.stringify({
+      items: [{ id: 'item-local-abc', code: 'BRG-900', name: 'Barang uji', price: 100, initialStock: 5 }],
+      transactions: [],
+      depreciations: [],
+    }),
+  });
+  const report = engine.evaluate(`addJournalEntry({
+    ref: 'INV-1', date: '2025-08-01', description: 'mutasi barang baru',
+    lines: [
+      { code: '1.2.13', debit: 200, kredit: 0, mutation: { item: 'BRG-900', type: 'in', quantity: 2 } },
+      { code: '3.1.10', debit: 0, kredit: 200 }
+    ]
+  })`);
+  const item = report.inventory.items.find((entry) => entry.code === 'BRG-900');
+  const mutation = report.inventory.transactions.find((entry) => entry.reference === 'INV-1');
+  check(
+    'barang input jurnal terhubung ke inventaris',
+    item?.id === 'item-local-abc' && mutation?.itemId === 'item-local-abc',
+    `item=${item?.id || '-'}, mutasi=${mutation?.itemId || '-'}`,
   );
 }
 
