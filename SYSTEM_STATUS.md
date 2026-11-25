@@ -1,0 +1,116 @@
+# SYSTEM_STATUS — Status Sistem Setelah Audit
+
+## 1. Ringkasan
+
+Situs laporan keuangan ini adalah aplikasi statis HTML/CSS/JS tanpa build tool, `package.json`, atau server. Perhitungan laporan terpusat di `data.js`; tampilan di `app.js`, `index.html`, `styles.css`, dan halaman inventaris di `inventaris/`.
+
+Status saat ini: **siap dipakai dengan batasan data sumber yang terdokumentasi**. Tidak ada `FAIL` pada pengujian parity. Angka yang tidak dapat diverifikasi atau memang bermasalah diberi status `BLOCKED`, `DEVIATION`, atau `SKIP` — bukan `PASS`.
+
+## 2. Sumber data dan batasan
+
+- Workbook sumber: `C:\Users\RYZEN\Downloads\LAPORAN KEUANGAN 2025.xlsx` (dibaca saja, tidak diubah).
+- Url sheet referensi: `https://docs.google.com/spreadsheets/d/1yMhC0C7REAkRvO8MD9RI-yeqwhC5vBhLm0Tul5CEG_Q/edit?usp=drivesdk`.
+- 7 sheet diaudit: `HOME`, `KODE AKUN`, `JURNAL UMUM`, `NERACA JALUR`, `LABA RUGI`, `NERACA`, `Sheet15`.
+- 124 akun dipetakan 1:1 berdasarkan **urutan baris** `KODE AKUN`, bukan nilai serial kolom A.
+- 2.795 baris jurnal → 1.301 transaksi, 12 bucket bulanan, periode `2025-01-01` … `2025-12-31`.
+- Workbook bertuliskan `Tahun 2026` di `NERACA!A3`; website mengikuti tanggal transaksi.
+- `Sheet15` adalah lampiran settlement 74 baris tanpa formula; tidak dipetakan ke laporan.
+
+## 3. Angka kunci
+
+| Item | Nilai website | Padanan workbook | Status |
+|---|---:|---:|---|
+| Total pendapatan | 5.345.391.648,00 | `HOME!B2` = 5.345.391.648 | PASS |
+| Total biaya | 5.194.628.100,70 | `HOME!B3` = 5.194.628.101 | PASS (δ −0,30) |
+| Laba tahun berjalan | 150.763.547,30 | `HOME!B4` / `LABA RUGI!C84` | PASS |
+| Kas setara kas | 3.540.285,30 | `HOME!B5` = 155.432.047,30 | DEVIATION |
+| Total aset | 155.432.047,30 | `NERACA!C40` | PASS |
+| Modal | 5.663.500,00 | `NERACA!F24` | PASS |
+| Total debit jurnal (termasuk tak terpetakan) | 10.702.157.010,70 | `JURNAL UMUM!G` | PASS |
+| Total kredit jurnal (termasuk tak terpetakan) | 10.702.152.010,70 | `JURNAL UMUM!H` | PASS |
+| Selisih jurnal mentah | 5.000,00 | sumber | BLOCKED |
+| Selisih jurnal terpetakan | −995.000,00 | sumber | BLOCKED |
+| Gap aset − liabilitas − laba | −995.000,00 | sumber | BLOCKED |
+
+Toleransi numerik: **0,50 IDR**. Alasan: dua cache `LABA RUGI` dibulatkan ke rupiah. Tidak ada pembulatan paksa di aplikasi.
+
+## 4. Status Pengujian
+
+Perintah yang sudah dijalankan dari root workspace:
+
+```powershell
+node --check data.js
+node --check app.js
+node --check inventaris/app.js
+node tools\parity-test.js
+node tools\smoke-test.js
+```
+
+Hasil terakhir:
+
+```text
+syntax checks        : 3/3 OK
+parity-test.js       : PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2 | FAIL 0
+smoke-test.js        : 8/8 PASS
+```
+
+Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARITY_TEST.md`.
+
+## 5. Struktur file
+
+| File | Status | Catatan |
+|---|---|---|
+| `data.js` | Dimodifikasi | Mesin hitung, 124 akun, storage versi, diagnostik |
+| `app.js` | Dimodifikasi | Dashboard, filter, banner, form multi-baris, cadangan |
+| `index.html` | Dimodifikasi | Branding, elemen validasi/cadangan/baris tambahan, periode dinamis |
+| `styles.css` | Dimodifikasi | 3 blok gaya tambahan; palet/font/layout lama dipertahankan |
+| `inventaris/app.js` | Dimodifikasi | Storage versi, merge transaksi, import validasi, tanpa reseed destruktif |
+| `inventaris/index.html` | Dimodifikasi | Branding + penjelasan tanpa jurnal otomatis |
+| `inventaris/styles.css` | Tidak diubah | Styling aset dipertahankan |
+| `tools/parity-test.js` | Baru | Pembaca XLSX + engine parity |
+| `tools/smoke-test.js` | Baru | Uji statis dan unit ringan |
+| `tools/parity-results.json` | Baru | Output parity test |
+| `*.md` | Baru | Tujuh dokumen audit/fix/parity/status |
+
+## 6. Penyimpanan browser
+
+| Kunci aktif | Fungsi | Migration source |
+|---|---|---|
+| `dinetkan-finance-v1` | Jurnal, saldo awal, settings | `dinnetkan-finance-journal-v2`, `dinnetkan-finance-journal-v1` |
+| `dinetkan-inventory-v1` | Barang, transaksi lokal, aturan penurunan | `dinnetkan-inventory-v1` |
+| `dinetkan-inventory-journal-sync-v1` | Signature diagnostik | `dinnetkan-inventory-journal-sync-v1` |
+
+Kunci lama sengaja tetap memakai ejaan `dinnetkan` agar data historis pengguna terbaca. Setelah dibaca, data ditulis ke kunci baru. Nama akun `DINETKAN` pada data historis juga tidak diubah.
+
+Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keuangan dan inventaris dapat dimuat kembali dengan validasi.
+
+## 7. Perilaku yang perlu diketahui pengguna
+
+1. KPI **Kas Setara Kas** tidak mengikuti angka `HOME!B5` workbook. Itu disengaja; lihat `AUDIT_EXCEL.md` §3.
+2. Banner `BLOCKED` akan muncul karena sumber memiliki baris akun tak terpetakan dan jurnal tidak seimbang. Ini bukan kegagalan aplikasi.
+3. Baris mutasi inventaris berlabel `Jurnal` berasal dari jurnal umum dan tidak bisa dihapus langsung di halaman inventaris; hapus/hubah jurnal sumbernya.
+4. Penurunan harga hanya mengubah nilai barang di laporan inventaris. Tidak ada jurnal penyusutan otomatis sampai kebijakan ditetapkan.
+5. Filter bulan memakai `YYYY-MM`, sehingga Januari 2025 dan Januari 2026 tidak lagi bercampur.
+6. Form jurnal dapat memiliki lebih dari dua baris; total debit harus sama dengan total kredit.
+7. Menu sidebar **Inventaris** langsung membuka `inventaris/index.html`; tautan balik memakai `../index.html`.
+
+## 8. Item BLOCKED / SKIP aktif
+
+| ID | Item | Nilai | Tindakan yang diperlukan |
+|---|---|---:|---|
+| SRC-01 | Dua jurnal admin tidak seimbang | +5.000 | Konfirmasi pasangan kredit yang benar |
+| SRC-02 | Helper `20090.0` di baris 3620 | 1.000.000 | Putuskan apakah harus dipetakan ke `PIUTANG KARYAWAN` |
+| SRC-03/04 | Gap neraca | −995.000 | Rekonsiliasi modal/laba tahun berjalan |
+| SRC-05 | Label `HOME!B5` | 151.891.762 delta | Perbaiki label workbook bila dipakai sebagai acuan eksternal |
+| SRC-06 | Presisi cache biaya | 0,30 | Tidak perlu selama toleransi 0,50 disetujui |
+| SRC-07 | Periode 2026 vs 2025 | — | Putuskan tahun pelaporan resmi |
+| INV-01 | Master BRG-001/002/003 | — | Jika ingin parity, sediakan master inventaris di workbook |
+| DEP-01 | Kebijakan penyusutan | — | Tetapkan metode, akun, dan frekuensi sebelum mengaktifkan jurnal otomatis |
+
+## 9. Pernyataan akhir
+
+- Tidak ada data historis yang dihapus atau ditimpa.
+- Tidak ada transaksi dummy atau jurnal penyeimbang yang dibuat.
+- Tidak ada hardcoding angka agar laporan tampak seimbang.
+- UI/UX lama (sidebar, navigasi, warna, tipografi, dashboard, halaman inventaris) dipertahankan; perubahan bersifat tambahan dan perbaikan perilaku.
+- Status ini hanya menyatakan kesesuaian dengan workbook dan kode yang ada, bukan opini audit akuntansi formal.

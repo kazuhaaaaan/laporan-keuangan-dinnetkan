@@ -4,9 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Catatan inventaris barang kosong yang bisa diisi harian, mingguan, dan bulanan" />
-  <title>Inventaris Dinnetkan</title>
-  <link rel="stylesheet" href="../styles.css?v=4" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <title>Inventaris Dinetkan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="mobile-topbar">
@@ -22,10 +25,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
     </button>
     <a class="brand" href="#ringkasan">
-      <span class="brand-mark">I</span>
+      <span class="brand-mark">D</span>
       <span>
-        <strong>Inventaris</strong>
-        <small>Stock Control</small>
+        <strong>Dinetkan</strong>
+        <small>Inventaris Barang</small>
       </span>
     </a>
 
@@ -81,7 +84,7 @@
   <main class="main">
     <header class="page-header" id="ringkasan">
       <div>
-        <p class="eyebrow">DARI JURNAL UMUM</p>
+        <p class="eyebrow">SISTEM KONTROL STOK &amp; INVENTARIS</p>
         <h1>Inventaris Barang</h1>
         <p class="subtitle">Isi barang dan mutasi masuk/keluar. Stok dihitung otomatis per hari, minggu, dan bulan.</p>
       </div>
@@ -235,7 +238,7 @@
         <div>
           <p class="eyebrow">PENYESUAIAN HARGA</p>
           <h2>Penurunan Harga per Bulan</h2>
-          <p class="panel-sub">Nilai per bulan dihitung otomatis dari tanggal mulai sampai akhir. Periode mengikuti tanggal yang sama tiap bulannya.</p>
+          <p class="panel-sub">Nilai per bulan dihitung otomatis dari tanggal mulai sampai akhir. Periode mengikuti tanggal yang sama tiap bulannya. Aturan ini tidak membuat jurnal otomatis agar penyusutan tidak dicatat dua kali.</p>
         </div>
         <span class="panel-meta" id="depSummary"></span>
       </div>

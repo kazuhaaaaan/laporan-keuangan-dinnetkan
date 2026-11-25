@@ -1,5 +1,7 @@
-const STORAGE_KEY = 'dinnetkan-inventory-v1';
-const JOURNAL_SYNC_KEY = 'dinnetkan-inventory-journal-sync-v1';
+const STORAGE_KEY = 'dinetkan-inventory-v1';
+const LEGACY_STORAGE_KEYS = ['dinnetkan-inventory-v1'];
+const JOURNAL_SYNC_KEY = 'dinetkan-inventory-journal-sync-v1';
+const LEGACY_JOURNAL_SYNC_KEY = 'dinnetkan-inventory-journal-sync-v1';
 const $ = (id) => document.getElementById(id);
 
 const numberFormatter = new Intl.NumberFormat('id-ID');
@@ -14,9 +16,10 @@ const shortDateFormatter = new Intl.DateTimeFormat('id-ID', { day: '2-digit', mo
 const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
 
 let state = loadState();
-let period = state.transactions.length ? 'month' : 'day';
-let selectedDate = state.transactions.length
-  ? state.transactions.reduce((latest, transaction) => (transaction.date > latest ? transaction.date : latest), state.transactions[0].date)
+let mergedTransactions = mergeTransactions();
+let period = mergedTransactions.length ? 'month' : 'day';
+let selectedDate = mergedTransactions.length
+  ? mergedTransactions.reduce((latest, transaction) => (transaction.date > latest ? transaction.date : latest), mergedTransactions[0].date)
   : todayISO();
 let editingItemId = null;
 let stockItemId = '';
@@ -27,14 +30,23 @@ function emptyState() {
   return { items: [], transactions: [], depreciations: [] };
 }
 
+function journalInventory() {
+  if (typeof REPORT_DATA === 'undefined') return null;
+  return REPORT_DATA.inventory || null;
+}
+
+function derivedTransactions() {
+  const inventory = journalInventory();
+  if (!inventory || !Array.isArray(inventory.transactions)) return [];
+  return inventory.transactions.map((transaction) => ({ ...transaction, source: 'journal-derived' }));
+}
+
 function seedState() {
-  const inventory = typeof REPORT_DATA !== 'undefined' ? REPORT_DATA.inventory : null;
-  if (!inventory || !Array.isArray(inventory.items) || !Array.isArray(inventory.transactions)) {
-    return emptyState();
-  }
+  const inventory = journalInventory();
+  if (!inventory || !Array.isArray(inventory.items)) return emptyState();
   return {
     items: inventory.items.map((item) => ({ ...item })),
-    transactions: inventory.transactions.map((transaction) => ({ ...transaction })),
+    transactions: [],
     depreciations: [],
   };
 }
@@ -44,24 +56,68 @@ function journalSignature() {
   return `${REPORT_DATA.journal.length}:${REPORT_DATA.inventory.transactions.length}`;
 }
 
+function isDerivedTransaction(transaction) {
+  return transaction?.source === 'journal-derived' || String(transaction?.id || '').startsWith('mut-dummy-');
+}
+
+function normalizeInventoryState(parsed) {
+  return {
+    items: Array.isArray(parsed?.items) ? parsed.items.filter((item) => item && item.id) : [],
+    transactions: Array.isArray(parsed?.transactions)
+      ? parsed.transactions
+          .filter((transaction) => transaction && transaction.id && !isDerivedTransaction(transaction))
+          .map((transaction) => ({ ...transaction, source: transaction.source || 'local' }))
+      : [],
+    depreciations: Array.isArray(parsed?.depreciations)
+      ? parsed.depreciations.filter((rule) => rule && rule.id && rule.itemId)
+      : [],
+  };
+}
+
 function loadState() {
   try {
-    const signature = journalSignature();
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    const depreciations = Array.isArray(parsed?.depreciations) ? parsed.depreciations : [];
-    if (!raw || localStorage.getItem(JOURNAL_SYNC_KEY) !== signature) {
-      localStorage.setItem(JOURNAL_SYNC_KEY, signature);
-      return { ...seedState(), depreciations };
+    let raw = localStorage.getItem(STORAGE_KEY);
+    let migratedFrom = '';
+    if (!raw) {
+      for (const key of LEGACY_STORAGE_KEYS) {
+        const legacy = localStorage.getItem(key);
+        if (legacy) {
+          raw = legacy;
+          migratedFrom = key;
+          break;
+        }
+      }
     }
-    return {
-      items: Array.isArray(parsed.items) ? parsed.items : [],
-      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-      depreciations,
-    };
+    if (!raw) return seedState();
+    const state = normalizeInventoryState(JSON.parse(raw));
+    if (migratedFrom) {
+      state.migratedFrom = migratedFrom;
+      saveState(state);
+    }
+    try {
+      localStorage.setItem(JOURNAL_SYNC_KEY, journalSignature());
+      localStorage.removeItem(LEGACY_JOURNAL_SYNC_KEY);
+    } catch (error) {
+      // Signature only controls diagnostics; it must never block locally stored data.
+    }
+    return state;
   } catch (error) {
-    return emptyState();
+    return seedState();
   }
+}
+
+function mergeTransactions() {
+  const byId = new Map();
+  [...derivedTransactions(), ...state.transactions].forEach((transaction) => {
+    if (!byId.has(transaction.id)) byId.set(transaction.id, transaction);
+  });
+  return [...byId.values()].sort(
+    (a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)),
+  );
+}
+
+function refreshMergedTransactions() {
+  mergedTransactions = mergeTransactions();
 }
 
 function saveState() {
@@ -215,7 +271,7 @@ function itemById(id) {
 }
 
 function transactionsOf(itemId) {
-  return state.transactions
+  return mergedTransactions
     .filter((transaction) => transaction.itemId === itemId)
     .sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
 }
@@ -238,7 +294,7 @@ function stockStatus(item) {
 
 function periodTransactions() {
   const { start, end } = periodRange();
-  return state.transactions
+  return mergedTransactions
     .filter((transaction) => transaction.date >= start && transaction.date <= end)
     .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
 }
@@ -516,8 +572,12 @@ function renderTransactions() {
         <td>${escapeHtml(item ? `${item.code} · ${item.name}` : 'Barang dihapus')}</td>
         <td><span class="badge ${row.type}">${row.type === 'in' ? 'Masuk' : 'Keluar'}</span></td>
         <td class="num right">${formatQty(row.quantity)} ${escapeHtml(item?.unit || '')}</td>
-        <td>${escapeHtml(row.note || row.reference || '—')}</td>
-        <td><div class="action-cell"><button class="icon-btn danger" type="button" data-delete-trx="${escapeHtml(row.id)}">Hapus</button></div></td>
+        <td>${escapeHtml(row.note || row.reference || '—')}${row.source === 'journal-derived' ? '<span class="source-tag">Jurnal</span>' : ''}</td>
+        <td><div class="action-cell">${
+          row.source === 'journal-derived'
+            ? '<span class="muted-note">Dari jurnal</span>'
+            : `<button class="icon-btn danger" type="button" data-delete-trx="${escapeHtml(row.id)}">Hapus</button>`
+        }</div></td>
       </tr>`;
     })
     .join('');
@@ -731,6 +791,7 @@ function submitTransaction(event) {
   $('trxNote').value = '';
   $('trxReference').value = '';
   saveState();
+  refreshMergedTransactions();
   renderAll();
   toast('Transaksi dicatat.');
 }
@@ -748,7 +809,8 @@ function download(content, filename, type) {
 }
 
 function exportJson() {
-  download(JSON.stringify(state, null, 2), 'inventaris-cadangan.json', 'application/json');
+  const backup = { ...state, transactions: mergedTransactions, exportedAt: new Date().toISOString() };
+  download(JSON.stringify(backup, null, 2), 'dinetkan-inventaris-cadangan.json', 'application/json');
   toast('Cadangan diunduh.');
 }
 
@@ -813,7 +875,7 @@ function buildWorkbook(sheets) {
 function stockAt(itemId, endDate) {
   const item = itemById(itemId);
   if (!item) return 0;
-  const mutation = state.transactions
+  const mutation = mergedTransactions
     .filter((transaction) => transaction.itemId === itemId && transaction.date <= endDate)
     .reduce((total, transaction) => total + (transaction.type === 'in' ? 1 : -1) * Number(transaction.quantity || 0), 0);
   return Number(item.initialStock || 0) + mutation;
@@ -888,7 +950,7 @@ function buildSummaryRows(groupType) {
   const header = headers[groupType].map((label) => [label, 'Header']);
   const groups = new Map();
 
-  state.transactions.forEach((transaction) => {
+  mergedTransactions.forEach((transaction) => {
     const date = dateFromISO(transaction.date);
     const year = date.getFullYear();
     let key;
@@ -967,12 +1029,12 @@ function buildDepreciationRows() {
 
 function buildReferenceRows() {
   return [
-    [['INVENTARIS DINNETKAN', 'Title']],
+    [['INVENTARIS DINETKAN', 'Title']],
     [['REKAP EXPORT EXCEL', 'Label']],
     [['Diekspor', 'Label'], [todayISO()]],
     [['Periode terpilih', 'Label'], [periodTitle()]],
     [['Jenis barang', 'Label'], [state.items.length]],
-    [['Jumlah transaksi', 'Label'], [state.transactions.length]],
+    [['Jumlah transaksi', 'Label'], [mergedTransactions.length]],
     [['Rumus stok', 'Label'], ['Stok akhir = Stok awal + Barang masuk - Barang keluar']],
     [['Rumus penurunan', 'Label'], ['Tiap aturan dihitung per bulan; aturan berikutnya memakai harga setelah aturan sebelumnya']],
     [['Periode penurunan', 'Label'], ['Tiap periode dihitung dari tanggal mulai ke tanggal yang sama di bulan berikutnya']],
@@ -986,7 +1048,7 @@ function buildReferenceRows() {
 }
 
 function exportExcel() {
-  const allTransactions = [...state.transactions].sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
+  const allTransactions = [...mergedTransactions].sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
   const sheets = [
     { name: 'Petunjuk', rows: buildReferenceRows() },
     { name: 'Periode Terpilih', rows: buildTransactionRows(periodTransactions()) },
@@ -1011,11 +1073,14 @@ function importJson(event) {
     try {
       const parsed = JSON.parse(reader.result);
       if (!Array.isArray(parsed.items) || !Array.isArray(parsed.transactions)) throw new Error('format invalid');
-      state = {
-        items: parsed.items,
-        transactions: parsed.transactions,
-        depreciations: Array.isArray(parsed.depreciations) ? parsed.depreciations : [],
-      };
+      const imported = normalizeInventoryState(parsed);
+      const invalidDates = imported.transactions.filter((transaction) => !/^\d{4}-\d{2}-\d{2}$/.test(String(transaction.date || '')));
+      if (invalidDates.length) throw new Error(`format tanggal invalid: ${invalidDates.length} transaksi`);
+      state = imported;
+      refreshMergedTransactions();
+      selectedDate = mergedTransactions.length
+        ? mergedTransactions.reduce((latest, transaction) => (transaction.date > latest ? transaction.date : latest), mergedTransactions[0].date)
+        : todayISO();
       stockItemId = '';
       depreciationItemId = '';
       itemQuery = '';
@@ -1025,7 +1090,7 @@ function importJson(event) {
       renderAll();
       toast('Cadangan berhasil dimuat.');
     } catch (error) {
-      toast('File cadangan tidak valid.', 'error');
+      toast(`File cadangan ditolak: ${error.message}`, 'error');
     }
   };
   reader.readAsText(file);
@@ -1102,6 +1167,7 @@ function initEvents() {
       state.items = state.items.filter((entry) => entry.id !== deleteId);
       state.transactions = state.transactions.filter((entry) => entry.itemId !== deleteId);
       state.depreciations = state.depreciations.filter((entry) => entry.itemId !== deleteId);
+      refreshMergedTransactions();
       if (editingItemId === deleteId) resetItemForm();
       if (stockItemId === deleteId) stockItemId = '';
       if (depreciationItemId === deleteId) depreciationItemId = '';
@@ -1116,6 +1182,7 @@ function initEvents() {
     if (!id || !window.confirm('Hapus transaksi ini?')) return;
     state.transactions = state.transactions.filter((transaction) => transaction.id !== id);
     saveState();
+    refreshMergedTransactions();
     renderAll();
     toast('Transaksi dihapus.');
   });
@@ -1133,6 +1200,7 @@ function initEvents() {
   $('resetBtn').addEventListener('click', () => {
     if (!window.confirm('Hapus semua barang, transaksi, dan aturan penurunan harga?')) return;
     state = emptyState();
+    refreshMergedTransactions();
     stockItemId = '';
     depreciationItemId = '';
     itemQuery = '';

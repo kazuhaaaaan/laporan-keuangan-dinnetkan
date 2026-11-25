@@ -135,53 +135,164 @@ const INVENTORY_ITEMS = [
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-function buildTrialBalance(accounts, entries) {
-  const rows = accounts.map((account) => ({ ...account, debit: 0, kredit: 0 }));
-  const byCode = new Map(rows.map((row) => [row.code, row]));
+// Kode mentah pada sheet KODE AKUN (kolom A), urutan identik dengan ACCOUNTS.
+// Disimpan sebagai metadata referensi; kode lama di localStorage tetap diterima.
+const SOURCE_ACCOUNT_CODES = [
+  '40179.0', '40544.0', '40909.0', '41275.0', '41640.0', '42005.0', '42370.0', '42736.0',
+  '43101.0', '43466.0', '43831.0', '44197.0', '44562.0', '40210.0', '40575.0', '40940.0',
+  '41306.0', '41671.0', '42036.0', '42401.0', '42767.0', '43132.0', '43497.0', '43862.0',
+  '44228.0', '44593.0', '44958.0', '45323.0', '45689.0', '46054.0', '40180.0', '40545.0',
+  '40910.0', '41276.0', '41641.0', '42006.0', '42371.0', '42737.0', '43102.0', '43467.0',
+  '43832.0', '44198.0', '44563.0', '44928.0', '45293.0', '45659.0', '46024.0', '46389.0',
+  '46754.0', '47120.0', '10960.0', '40181.0', '40546.0', '40911.0', '41277.0', '41642.0',
+  '42007.0', '42372.0', '42738.0', '43103.0', '43468.0', '43833.0', '44199.0', '44564.0',
+  '40183.0', '40548.0', '40913.0', '41279.0', '41644.0', '42009.0', '42374.0', '42740.0',
+  '43105.0', '43470.0', '43835.0', '44201.0', '44566.0', '44931.0', '45296.0', '45662.0',
+  '46027.0', '46392.0', '46757.0', '47123.0', '10963.0', '11328.0', '11693.0', '12059.0',
+  '12424.0', '12789.0', '13154.0', '13520.0', '13885.0', '14250.0', '14615.0', '14981.0',
+  '15346.0', '15711.0', '16076.0', '16442.0', '16807.0', '17172.0', '17537.0', '17903.0',
+  '18268.0', '18633.0', '18998.0', '19364.0', '19729.0', '20094.0', '20459.0', '20825.0',
+  '21190.0', '21555.0', '21920.0', '22286.0', '22651.0', '23016.0', '23381.0', '23747.0',
+  '24112.0', '24477.0', '24842.0', '25208.0',
+];
+
+// Kas setara kas mengikuti nama akun yang memang tersedia di KODE AKUN.
+// HOME!B5 workbook menggunakan NERACA!C40 (total aset), bukan kas; lihat AUDIT_EXCEL.md.
+const CASH_EQUIVALENT_NAMES = new Set([
+  'KAS KECIL',
+  'BANK BCA DINETKAN',
+  'DUITKU',
+  'BANK MANDIRI DINETKAN',
+  'BANK',
+]);
+
+const FINANCE_STORAGE_KEY = 'dinetkan-finance-v1';
+const LEGACY_FINANCE_KEYS = ['dinnetkan-finance-journal-v2', 'dinnetkan-finance-journal-v1'];
+const FINANCE_SCHEMA_VERSION = 1;
+
+ACCOUNTS.forEach((account, index) => {
+  account.sourceCode = SOURCE_ACCOUNT_CODES[index];
+});
+
+function roundMoney(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function excelSerialToISO(value) {
+  const serial = Number(value);
+  if (!Number.isFinite(serial)) return '';
+  const date = new Date(Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+}
+
+function buildAccountIndex(accounts) {
+  const index = new Map();
+  accounts.forEach((account) => {
+    [account.code, account.sourceCode, account.helper].filter(Boolean).forEach((key) => {
+      if (!index.has(key)) index.set(key, account);
+    });
+  });
+  return index;
+}
+
+function resolveOpeningBalance(openingBalances, account) {
+  const keys = [account.code, account.sourceCode, account.helper].filter(Boolean);
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(openingBalances, key)) {
+      const value = openingBalances[key] || {};
+      return {
+        debit: normalizeNumber(value.debit ?? value.saldoAwalDebet),
+        kredit: normalizeNumber(value.kredit ?? value.saldoAwalKredit),
+      };
+    }
+  }
+  return { debit: 0, kredit: 0 };
+}
+
+function buildTrialBalance(accounts, entries, options = {}) {
+  const openingBalances = options.openingBalances || {};
+  const rows = accounts.map((account) => {
+    const opening = resolveOpeningBalance(openingBalances, account);
+    return {
+      ...account,
+      openingDebit: opening.debit,
+      openingKredit: opening.kredit,
+      debit: opening.debit,
+      kredit: opening.kredit,
+    };
+  });
+  const index = new Map();
+  rows.forEach((row) => {
+    [row.code, row.sourceCode, row.helper].filter(Boolean).forEach((key) => {
+      if (!index.has(key)) index.set(key, row);
+    });
+  });
+  const unmappedLines = [];
 
   entries.forEach((entry) => {
-    entry.lines.forEach((line) => {
-      const row = byCode.get(line.code) || rows.find((account) => account.helper === line.code);
-      if (!row) throw new Error(`Akun ${line.code} tidak ada dalam KODE AKUN`);
-      row.debit += line.debit || 0;
-      row.kredit += line.kredit || 0;
+    (entry.lines || []).forEach((line) => {
+      const row = index.get(line.code);
+      if (!row) {
+        unmappedLines.push({
+          entry: entry.ref || entry.id || '',
+          date: entry.date || '',
+          code: line.code || '',
+          debit: normalizeNumber(line.debit),
+          kredit: normalizeNumber(line.kredit ?? line.credit),
+        });
+        return;
+      }
+      row.debit += normalizeNumber(line.debit);
+      row.kredit += normalizeNumber(line.kredit ?? line.credit);
     });
   });
 
   rows.forEach((row) => {
-    row.saldo = row.side === 'debet' ? row.debit - row.kredit : row.kredit - row.debit;
+    row.saldo = roundMoney(
+      row.side === 'debet' ? row.debit - row.kredit : row.kredit - row.debit,
+    );
+    row.saldoDebet = row.side === 'debet' ? Math.max(0, row.saldo) : Math.max(0, -row.saldo);
+    row.saldoKredit = row.side === 'kredit' ? Math.max(0, row.saldo) : Math.max(0, -row.saldo);
   });
 
-  const totalDebit = rows.reduce((sum, row) => sum + row.debit, 0);
-  const totalKredit = rows.reduce((sum, row) => sum + row.kredit, 0);
-  if (Math.abs(totalDebit - totalKredit) > 0.01) throw new Error('Jurnal umum tidak seimbang');
+  const totalDebit = roundMoney(rows.reduce((sum, row) => sum + row.debit, 0));
+  const totalKredit = roundMoney(rows.reduce((sum, row) => sum + row.kredit, 0));
 
   return {
     rows,
     totalDebit,
     totalKredit,
-    totalSaldoDebet: rows.reduce(
-      (sum, row) => sum + (row.side === 'debet' ? Math.max(0, row.saldo) : Math.max(0, -row.saldo)),
-      0,
-    ),
-    totalSaldoKredit: rows.reduce(
-      (sum, row) => sum + (row.side === 'kredit' ? Math.max(0, row.saldo) : Math.max(0, -row.saldo)),
-      0,
-    ),
+    imbalance: roundMoney(totalDebit - totalKredit),
+    unmappedLines,
+    totalSaldoDebet: roundMoney(rows.reduce((sum, row) => sum + row.saldoDebet, 0)),
+    totalSaldoKredit: roundMoney(rows.reduce((sum, row) => sum + row.saldoKredit, 0)),
   };
 }
 
 function buildJournalRows(accounts, entries) {
-  const names = new Map(accounts.flatMap((account) => [[account.code, account.name], [account.helper, account.name]]));
+  const index = buildAccountIndex(accounts);
   return entries.flatMap((entry) =>
-    entry.lines.map((line) => [
-      entry.date,
-      entry.description,
-      line.code,
-      names.get(line.code),
-      line.debit || 0,
-      line.kredit || 0,
-    ]),
+    (entry.lines || [])
+      .map((line) => {
+        const account = index.get(line.code);
+        if (!account) return null;
+        return [
+          entry.date,
+          entry.description,
+          account.code,
+          account.name,
+          normalizeNumber(line.debit),
+          normalizeNumber(line.kredit ?? line.credit),
+          entry.ref || entry.id || '',
+          account.sourceCode || '',
+        ];
+      })
+      .filter(Boolean),
   );
 }
 
@@ -189,21 +300,43 @@ function buildInventory(entries, itemDefinitions) {
   const items = itemDefinitions.map((item, index) => ({
     ...item,
     id: `item-dummy-${String(index + 1).padStart(3, '0')}`,
-    initialStock: 0,
+    source: 'journal-derived',
   }));
   const byCode = new Map(items.map((item) => [item.code, item]));
   const transactions = [];
+  const diagnostics = { unmappedItems: [], mutationMismatches: [], depreciationLines: 0 };
+  const depreciationNames = new Set([
+    'AK. PENYUSUTAN BANGUNAN',
+    'AK. PENYUSUTAN KENDARAAN RODA 4',
+    'AK. PENYUSUTAN KENDARAAN RODA 2',
+    'AK. PENYUSUTAN INVENTARIS KANTOR',
+    'AK. PENYUSUTAN PERALATAN DAN MESIN',
+    'BIAYA PENYUSUTAN INVENTARIS',
+  ]);
   let sequence = 0;
 
   entries.forEach((entry) => {
-    entry.lines.forEach((line) => {
+    (entry.lines || []).forEach((line) => {
+      if (depreciationNames.has(line.accountName || '')) diagnostics.depreciationLines += 1;
       if (!line.mutation) return;
       const item = byCode.get(line.mutation.item);
-      if (!item) throw new Error(`Barang ${line.mutation.item} tidak ditemukan`);
-      const recordedAmount = line.debit || line.kredit || 0;
-      const mutationAmount = line.mutation.quantity * item.price;
+      if (!item) {
+        diagnostics.unmappedItems.push({
+          entry: entry.ref || entry.id || '',
+          item: line.mutation.item || '',
+        });
+        return;
+      }
+      const recordedAmount = normalizeNumber(line.debit) || normalizeNumber(line.kredit ?? line.credit);
+      const quantity = normalizeNumber(line.mutation.quantity);
+      const mutationAmount = roundMoney(quantity * item.price);
       if (Math.abs(recordedAmount - mutationAmount) > 0.01) {
-        throw new Error(`Nilai mutasi ${item.code} tidak cocok dengan jurnal`);
+        diagnostics.mutationMismatches.push({
+          entry: entry.ref || entry.id || '',
+          item: item.code,
+          recorded: recordedAmount,
+          expected: mutationAmount,
+        });
       }
       sequence += 1;
       transactions.push({
@@ -211,72 +344,235 @@ function buildInventory(entries, itemDefinitions) {
         createdAt: Date.parse(`${entry.date}T00:00:00Z`) + sequence,
         date: entry.date,
         itemId: item.id,
-        type: line.mutation.type,
-        quantity: line.mutation.quantity,
+        type: line.mutation.type === 'out' ? 'out' : 'in',
+        quantity,
         note: entry.description,
         reference: entry.ref || line.code,
+        source: 'journal-derived',
       });
     });
   });
 
-  const stockValue = transactions.reduce((total, transaction) => {
+  const valueOf = (transaction) => {
     const item = items.find((candidate) => candidate.id === transaction.itemId);
-    const sign = transaction.type === 'in' ? 1 : -1;
-    return total + sign * transaction.quantity * item.price;
-  }, 0);
+    return (transaction.type === 'in' ? 1 : -1) * transaction.quantity * (item?.price || 0);
+  };
+  const stockValue = roundMoney(transactions.reduce((total, transaction) => total + valueOf(transaction), 0));
+  const initialStockValue = roundMoney(
+    items.reduce((total, item) => total + normalizeNumber(item.initialStock) * normalizeNumber(item.price), 0),
+  );
 
-  return { items, transactions, stockValue };
+  return { items, transactions, stockValue, initialStockValue, diagnostics };
 }
 
 function buildMonthly(accounts, entries) {
-  const types = new Map(accounts.map((account) => [account.code, account.type]));
-  const activeMonths = new Set(entries.map((entry) => entry.date.slice(5, 7)));
-  const monthly = [];
+  const index = buildAccountIndex(accounts);
+  const groups = new Map();
 
-  MONTH_NAMES.forEach((month, index) => {
-    const monthNumber = String(index + 1).padStart(2, '0');
-    if (!activeMonths.has(monthNumber)) return;
-    let revenue = 0;
-    let expense = 0;
-    entries
-      .filter((entry) => entry.date.slice(5, 7) === monthNumber)
-      .forEach((entry) => {
-        entry.lines.forEach((line) => {
-          const type = types.get(line.code);
-          if (type === 'pendapatan') revenue += (line.kredit || 0) - (line.debit || 0);
-          if (type === 'biaya') expense += (line.debit || 0) - (line.kredit || 0);
-        });
+  entries.forEach((entry) => {
+    const date = String(entry.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    const key = date.slice(0, 7);
+    const year = date.slice(0, 4);
+    const number = date.slice(5, 7);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        year,
+        number,
+        month: MONTH_NAMES[Number(number) - 1] || number,
+        label: `${MONTH_NAMES[Number(number) - 1] || number} ${year}`,
+        revenue: 0,
+        expense: 0,
       });
-    monthly.push({ month, number: monthNumber, revenue, expense });
+    }
+    const group = groups.get(key);
+    (entry.lines || []).forEach((line) => {
+      const account = index.get(line.code);
+      if (!account) return;
+      const debit = normalizeNumber(line.debit);
+      const kredit = normalizeNumber(line.kredit ?? line.credit);
+      if (account.type === 'pendapatan') group.revenue += kredit - debit;
+      if (account.type === 'biaya') group.expense += debit - kredit;
+    });
   });
 
+  const monthly = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+  monthly.forEach((item) => {
+    item.revenue = roundMoney(item.revenue);
+    item.expense = roundMoney(item.expense);
+  });
   return monthly;
 }
 
-function buildReportData(entries) {
-  const trialBalance = buildTrialBalance(ACCOUNTS, entries);
+function validateEntry(entry, index = 0) {
+  const errors = [];
+  const label = entry?.ref || entry?.id || `baris ${index + 1}`;
+  if (!entry || typeof entry !== 'object') return [`${label}: format transaksi tidak valid.`];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(entry.date || ''))) {
+    errors.push(`${label}: tanggal harus berformat YYYY-MM-DD.`);
+  }
+  if (!String(entry.description || '').trim()) errors.push(`${label}: keterangan wajib diisi.`);
+  if (!Array.isArray(entry.lines) || entry.lines.length === 0) {
+    errors.push(`${label}: transaksi harus memiliki minimal satu baris akun.`);
+    return errors;
+  }
+  entry.lines.forEach((line, lineIndex) => {
+    if (!String(line.code || '').trim()) {
+      errors.push(`${label} baris ${lineIndex + 1}: akun wajib dipilih.`);
+    }
+    const debit = normalizeNumber(line.debit);
+    const kredit = normalizeNumber(line.kredit ?? line.credit);
+    if (debit < 0 || kredit < 0) {
+      errors.push(`${label} baris ${lineIndex + 1}: nominal tidak boleh negatif.`);
+    }
+    if (debit > 0 && kredit > 0) {
+      errors.push(`${label} baris ${lineIndex + 1}: debit dan kredit tidak boleh bersamaan.`);
+    }
+  });
+  const debit = roundMoney(entry.lines.reduce((sum, line) => sum + normalizeNumber(line.debit), 0));
+  const kredit = roundMoney(
+    entry.lines.reduce((sum, line) => sum + normalizeNumber(line.kredit ?? line.credit), 0),
+  );
+  if (Math.abs(debit - kredit) > 0.01) {
+    errors.push(`${label}: jurnal tidak seimbang (selisih ${moneyDelta(debit - kredit)}).`);
+  }
+  return errors;
+}
+
+function moneyDelta(value) {
+  return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+}
+
+function normalizeEntry(raw, index = 0) {
+  if (!raw || typeof raw !== 'object') return null;
+  const fallbackRef = `JRN-${String(index + 1).padStart(5, '0')}`;
+  const lines = (Array.isArray(raw.lines) ? raw.lines : []).map((line) => {
+    if (!line || typeof line !== 'object') return null;
+    const code = String(line.code ?? line.account ?? '').trim();
+    const debit = normalizeNumber(line.debit ?? (line.side === 'debet' ? line.amount : 0));
+    const kredit = normalizeNumber(line.kredit ?? line.credit ?? (line.side === 'kredit' ? line.amount : 0));
+    const result = { code, debit, kredit };
+    if (line.accountName) result.accountName = String(line.accountName);
+    if (line.mutation && typeof line.mutation === 'object') {
+      result.mutation = {
+        item: String(line.mutation.item ?? ''),
+        type: line.mutation.type === 'out' ? 'out' : 'in',
+        quantity: normalizeNumber(line.mutation.quantity),
+      };
+    }
+    return result;
+  }).filter(Boolean);
+
+  return {
+    id: String(raw.id || raw.ref || fallbackRef),
+    ref: String(raw.ref || raw.id || fallbackRef),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.date || '')) ? String(raw.date) : excelSerialToISO(raw.date),
+    description: String(raw.description || '').trim(),
+    lines,
+  };
+}
+
+function normalizeOpeningBalances(input) {
+  const result = {};
+  Object.entries(input || {}).forEach(([key, value]) => {
+    if (!key) return;
+    if (typeof value === 'number' || typeof value === 'string') {
+      result[key] = { debit: normalizeNumber(value), kredit: 0 };
+    } else if (value && typeof value === 'object') {
+      result[key] = {
+        debit: normalizeNumber(value.debit ?? value.saldoAwalDebet),
+        kredit: normalizeNumber(value.kredit ?? value.saldoAwalKredit),
+      };
+    }
+  });
+  return result;
+}
+
+function normalizeFinanceState(raw) {
+  if (Array.isArray(raw)) {
+    return {
+      version: FINANCE_SCHEMA_VERSION,
+      entries: raw.map(normalizeEntry).filter(Boolean),
+      openingBalances: {},
+      settings: {},
+    };
+  }
+  return {
+    version: normalizeNumber(raw?.version) || FINANCE_SCHEMA_VERSION,
+    entries: (Array.isArray(raw?.entries) ? raw.entries : []).map(normalizeEntry).filter(Boolean),
+    openingBalances: normalizeOpeningBalances(raw?.openingBalances),
+    settings: raw?.settings && typeof raw.settings === 'object' ? raw.settings : {},
+  };
+}
+
+function emptyFinanceState() {
+  return { version: FINANCE_SCHEMA_VERSION, entries: [], openingBalances: {}, settings: {} };
+}
+
+function loadFinanceState() {
+  if (typeof localStorage === 'undefined') return emptyFinanceState();
+  try {
+    const raw = localStorage.getItem(FINANCE_STORAGE_KEY);
+    if (raw) return normalizeFinanceState(JSON.parse(raw));
+    for (const legacyKey of LEGACY_FINANCE_KEYS) {
+      const legacy = localStorage.getItem(legacyKey);
+      if (!legacy) continue;
+      const state = normalizeFinanceState(JSON.parse(legacy));
+      state.settings = { ...state.settings, migratedFrom: legacyKey };
+      saveFinanceState(state);
+      return state;
+    }
+  } catch (error) {
+    return emptyFinanceState();
+  }
+  return emptyFinanceState();
+}
+
+function saveFinanceState(state) {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(normalizeFinanceState(state)));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function derivePeriod(entries) {
+  const dates = entries.map((entry) => String(entry.date || '')).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort();
+  if (!dates.length) return 'TANPA DATA';
+  const first = dates[0].slice(0, 4);
+  const last = dates[dates.length - 1].slice(0, 4);
+  return first === last ? first : `${first}–${last}`;
+}
+
+function buildReportData(entries, options = {}) {
+  const state = options.state || loadFinanceState();
+  const openingBalances = options.openingBalances || state.openingBalances || {};
+  const trialBalance = buildTrialBalance(ACCOUNTS, entries, { openingBalances });
   const inventory = buildInventory(entries, INVENTORY_ITEMS);
+  const validationErrors = entries.flatMap((entry, index) => validateEntry(entry, index));
   const signed = (row) => {
     const normalSide = ['pendapatan', 'liabilitas', 'ekuitas'].includes(row.type) ? 'kredit' : 'debet';
     return row.side === normalSide ? row.saldo : -row.saldo;
   };
   const totalOf = (type) =>
     trialBalance.rows.filter((row) => row.type === type).reduce((sum, row) => sum + signed(row), 0);
-  const pendapatan = totalOf('pendapatan');
-  const biaya = totalOf('biaya');
-  const laba = pendapatan - biaya;
-  const kas = trialBalance.rows
-    .filter((row) => row.report === 'neraca' && row.code.startsWith('1.'))
-    .reduce((sum, row) => sum + signed(row), 0);
+  const pendapatan = roundMoney(totalOf('pendapatan'));
+  const biaya = roundMoney(totalOf('biaya'));
+  const laba = roundMoney(pendapatan - biaya);
+  const cashCodes = new Set(ACCOUNTS.filter((account) => CASH_EQUIVALENT_NAMES.has(account.name)).map((account) => account.code));
+  const kas = roundMoney(
+    trialBalance.rows.filter((row) => cashCodes.has(row.code)).reduce((sum, row) => sum + signed(row), 0),
+  );
   const group = (type) =>
     trialBalance.rows
       .filter((row) => row.type === type && signed(row) !== 0)
-      .map((row) => ({ code: row.code, name: row.name, amount: signed(row) }));
+      .map((row) => ({ code: row.code, name: row.name, amount: roundMoney(signed(row)) }));
 
   const stockAccount = trialBalance.rows.find((row) => row.code === '1.2.13');
-  if (Math.abs(stockAccount.saldo - inventory.stockValue) > 0.01) {
-    throw new Error('Nilai persediaan tidak cocok dengan kartu stok');
-  }
+  const inventoryVariance = roundMoney((stockAccount?.saldo || 0) - inventory.stockValue);
 
   const assets = group('aset').sort((a, b) => a.code.localeCompare(b.code));
   const liabilities = group('liabilitas')
@@ -284,14 +580,26 @@ function buildReportData(entries) {
     .concat([{ code: '2.1.28', name: 'LABA / RUGI TAHUN BERJALAN', amount: laba, computed: true }])
     .sort((a, b) => a.code.localeCompare(b.code));
 
+  const diagnostics = {
+    validationErrors,
+    unmappedLines: trialBalance.unmappedLines,
+    journalImbalance: trialBalance.imbalance,
+    inventoryVariance,
+    inventory: inventory.diagnostics,
+  };
+  const hasBlockingIssues =
+    validationErrors.length > 0 || trialBalance.unmappedLines.length > 0 || Math.abs(trialBalance.imbalance) > 0.01;
+
   return {
     meta: {
-      title: 'Laporan Keuangan Dinnetkan',
-      period: entries.length ? entries[entries.length - 1].date.slice(0, 4) : '2025',
+      title: 'Laporan Keuangan Dinetkan',
+      period: derivePeriod(entries),
       source: SOURCE_SHEET,
       generatedAt: new Date().toISOString().slice(0, 10),
       isDummy: false,
-      note: 'Kode akun, neraca, dan laba rugi mengikuti logika spreadsheet; isi jurnal manual.',
+      note: 'Kode akun, neraca, dan laba rugi mengikuti KODE AKUN pada spreadsheet; jurnal berasal dari input lokal.',
+      diagnostics,
+      hasBlockingIssues,
     },
     summary: { pendapatan, biaya, laba, kas },
     monthly: buildMonthly(ACCOUNTS, entries),
@@ -303,17 +611,21 @@ function buildReportData(entries) {
     trialBalance: {
       rows: trialBalance.rows.map((row) => ({
         code: row.code,
+        sourceCode: row.sourceCode,
         name: row.name,
         side: row.side,
         report: row.report,
+        openingDebit: row.openingDebit,
+        openingKredit: row.openingKredit,
         debit: row.debit,
         kredit: row.kredit,
         saldo: row.saldo,
-        saldoDebet: row.side === 'debet' ? Math.max(0, row.saldo) : Math.max(0, -row.saldo),
-        saldoKredit: row.side === 'kredit' ? Math.max(0, row.saldo) : Math.max(0, -row.saldo),
+        saldoDebet: row.saldoDebet,
+        saldoKredit: row.saldoKredit,
       })),
       totalDebit: trialBalance.totalDebit,
       totalKredit: trialBalance.totalKredit,
+      imbalance: trialBalance.imbalance,
       totalSaldoDebet: trialBalance.totalSaldoDebet,
       totalSaldoKredit: trialBalance.totalSaldoKredit,
     },
@@ -328,53 +640,74 @@ function buildReportData(entries) {
   };
 }
 
-const FINANCE_STORAGE_KEY = 'dinnetkan-finance-journal-v2';
-
 function loadJournalEntries() {
-  if (typeof localStorage === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(FINANCE_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry) => entry && typeof entry.date === 'string' && Array.isArray(entry.lines));
-  } catch (error) {
-    return [];
-  }
+  return loadFinanceState().entries;
 }
 
 function saveJournalEntries(entries) {
-  if (typeof localStorage === 'undefined') return;
-  try {
-    localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(entries));
-  } catch (error) {
-    return;
-  }
+  const state = loadFinanceState();
+  state.entries = entries;
+  saveFinanceState(state);
 }
 
-function replaceJournalEntries(entries) {
-  const report = buildReportData(entries);
-  saveJournalEntries(entries);
+function replaceJournalEntries(entries, options = {}) {
+  const normalized = (entries || []).map(normalizeEntry).filter(Boolean);
+  const state = loadFinanceState();
+  state.entries = normalized;
+  if (options.openingBalances) state.openingBalances = normalizeOpeningBalances(options.openingBalances);
+  saveFinanceState(state);
+  const report = buildReportData(normalized, { state });
   REPORT_DATA = report;
   return report;
 }
 
 function addJournalEntry(entry) {
-  if (!entry || typeof entry.date !== 'string' || !Array.isArray(entry.lines)) {
-    throw new Error('Format transaksi tidak valid.');
-  }
-  const entries = loadJournalEntries();
-  entries.push(entry);
-  entries.sort((a, b) => a.date.localeCompare(b.date));
-  return replaceJournalEntries(entries);
+  const normalized = normalizeEntry(entry, loadFinanceState().entries.length);
+  const errors = validateEntry(normalized, loadFinanceState().entries.length);
+  if (errors.length) throw new Error(errors.join(' '));
+  const state = loadFinanceState();
+  state.entries.push(normalized);
+  state.entries.sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.ref).localeCompare(String(b.ref)));
+  saveFinanceState(state);
+  const report = buildReportData(state.entries, { state });
+  REPORT_DATA = report;
+  return report;
+}
+
+function deleteJournalEntry(ref) {
+  if (!ref) return false;
+  const state = loadFinanceState();
+  const next = state.entries.filter((entry) => entry.ref !== ref && entry.id !== ref);
+  if (next.length === state.entries.length) return false;
+  state.entries = next;
+  saveFinanceState(state);
+  REPORT_DATA = buildReportData(state.entries, { state });
+  return true;
 }
 
 function clearJournalEntries() {
   return replaceJournalEntries([]);
 }
 
+function exportFinanceBackup() {
+  return JSON.stringify(loadFinanceState(), null, 2);
+}
+
+function importFinanceBackup(text) {
+  const parsed = JSON.parse(text);
+  const state = normalizeFinanceState(parsed);
+  const errors = state.entries.flatMap((entry, index) => validateEntry(entry, index));
+  if (errors.length) {
+    return { ok: false, errors, state, report: null };
+  }
+  saveFinanceState(state);
+  REPORT_DATA = buildReportData(state.entries, { state });
+  return { ok: true, errors: [], state, report: REPORT_DATA };
+}
+
 function refreshReportData() {
-  REPORT_DATA = buildReportData(loadJournalEntries());
+  const state = loadFinanceState();
+  REPORT_DATA = buildReportData(state.entries, { state });
   return REPORT_DATA;
 }
 

@@ -1,0 +1,216 @@
+{
+  "generatedAt": "2026-11-25T01:53:54.393Z",
+  "xlsxPath": "C:\\Users\\RYZEN\\Downloads\\LAPORAN KEUANGAN 2025.xlsx",
+  "tolerance": 0.5,
+  "counts": {
+    "PASS": 15,
+    "DEVIATION": 1,
+    "BLOCKED": 5,
+    "SKIP": 2
+  },
+  "totals": {
+    "journalRows": 2795,
+    "journalEntries": 1301,
+    "accounts": 124,
+    "monthlyBuckets": 12,
+    "cashNames": [
+      "KAS KECIL",
+      "BANK BCA DINETKAN",
+      "DUITKU",
+      "BANK MANDIRI DINETKAN",
+      "BANK"
+    ],
+    "cashAmount": 3540285.3,
+    "workbookCashLabelAmount": 155432047.3,
+    "assetsTotal": 155432047.3,
+    "liabilitiesWorkbook": 5663500,
+    "currentProfitWorkbook": 150763547.3,
+    "balanceGap": -995000
+  },
+  "results": [
+    {
+      "status": "PASS",
+      "category": "mapping",
+      "item": "ACCOUNTS vs KODE AKUN (124 akun)",
+      "expected": "124 akun, 0 selisih",
+      "actual": "124 akun, 0 selisih",
+      "note": "Map berdasarkan urutan baris, bukan nilai serial kolom A."
+    },
+    {
+      "status": "PASS",
+      "category": "home",
+      "item": "HOME!B2 = LABA RUGI!C21 (pendapatan)",
+      "expected": 5345391648,
+      "actual": 5345391648,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "home",
+      "item": "HOME!B3 = LABA RUGI!C83 (biaya)",
+      "expected": 5194628101,
+      "actual": 5194628100.7,
+      "note": "Dua baris cache workbook dibulatkan ke rupiah; lihat dokumentasi."
+    },
+    {
+      "status": "PASS",
+      "category": "home",
+      "item": "HOME!B4 = LABA RUGI!C84 (laba)",
+      "expected": 150763547.3,
+      "actual": 150763547.3,
+      "note": "delta 0"
+    },
+    {
+      "status": "DEVIATION",
+      "category": "home",
+      "item": "HOME!B5 label KAS SETARA KAS",
+      "expected": 155432047.3,
+      "actual": 3540285.3,
+      "note": "Workbook B5 mereferensi NERACA!C40 (total aset), bukan kas. Engine memakai akun kas menurut KODE AKUN; selisih = aset non-kas."
+    },
+    {
+      "status": "PASS",
+      "category": "income-statement",
+      "item": "LABA RUGI per akun (73 akun)",
+      "expected": "0 selisih > 0.50",
+      "actual": "0 selisih > 0.50",
+      "note": "Dibandingkan dengan nilai cache C per baris."
+    },
+    {
+      "status": "PASS",
+      "category": "income-statement",
+      "item": "LABA RUGI!C84 (laba bersih)",
+      "expected": 150763547.3,
+      "actual": 150763547.3,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "trial-balance",
+      "item": "NERACA JALUR saldo per akun (124 akun)",
+      "expected": "0 selisih > 0.50",
+      "actual": "0 selisih > 0.50",
+      "note": "Kolom D/E workbook adalah saldo bersih menurut pos saldo."
+    },
+    {
+      "status": "PASS",
+      "category": "balance-sheet",
+      "item": "NERACA!C9 KAS KECIL",
+      "expected": 41793,
+      "actual": 41793,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "balance-sheet",
+      "item": "NERACA!C10 BANK BCA DINETKAN",
+      "expected": 3498492.3,
+      "actual": 3498492.3,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "balance-sheet",
+      "item": "NERACA!C38 PERALATAN DAN MESIN",
+      "expected": 151891762,
+      "actual": 151891762,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "balance-sheet",
+      "item": "NERACA!C40 total aset",
+      "expected": 155432047.3,
+      "actual": 155432047.3,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "balance-sheet",
+      "item": "NERACA!F24 MODAL",
+      "expected": 5663500,
+      "actual": 5663500,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "balance-sheet",
+      "item": "LABA RUGI!C84 → ekuitas laporan",
+      "expected": 150763547.3,
+      "actual": 150763547.3,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "journal",
+      "item": "JURNAL UMUM total debit (termasuk akun tak terpetakan)",
+      "expected": 10702157010.7,
+      "actual": 10702157010.7,
+      "note": "delta 0"
+    },
+    {
+      "status": "PASS",
+      "category": "journal",
+      "item": "JURNAL UMUM total kredit (termasuk akun tak terpetakan)",
+      "expected": 10702152010.7,
+      "actual": 10702152010.7,
+      "note": "delta 0"
+    },
+    {
+      "status": "BLOCKED",
+      "category": "journal",
+      "item": "Akun jurnal tidak ada di KODE AKUN",
+      "expected": "0 baris",
+      "actual": "1 baris",
+      "note": "[{\"entry\":\"XL-03619\",\"date\":\"2025-12-17\",\"code\":\"20090.0\",\"debit\":1000000,\"kredit\":0}]"
+    },
+    {
+      "status": "BLOCKED",
+      "category": "journal",
+      "item": "Keseimbangan jurnal mentah workbook",
+      "expected": "0",
+      "actual": 5000,
+      "note": "Dua transaksi BIAYA ADMINISTRASI masing-masing menyisihkan Rp2.500; tidak dikoreksi."
+    },
+    {
+      "status": "BLOCKED",
+      "category": "journal",
+      "item": "Keseimbangan jurnal terpetakan",
+      "expected": "0",
+      "actual": -995000,
+      "note": "Selisih setelah 1 baris tak terpetakan Rp1.000.000 dikeluarkan dari perhitungan."
+    },
+    {
+      "status": "BLOCKED",
+      "category": "balance-sheet",
+      "item": "Selisih aset vs liabilitas + laba workbook",
+      "expected": "0",
+      "actual": -995000,
+      "note": "NERACA!F40 tidak memasukkan LABA RUGI TAHUN BERJALAN. Website menampilkan komponen secara terpisah; tidak ada penyesuaian paksa."
+    },
+    {
+      "status": "SKIP",
+      "category": "inventory",
+      "item": "Master barang BRG-001/002/003",
+      "expected": "tidak tersedia",
+      "actual": "3 item lokal dipertahankan",
+      "note": "Workbook tidak memuat master inventaris; tidak klaim parity."
+    },
+    {
+      "status": "SKIP",
+      "category": "depreciation",
+      "item": "Kebijakan penyusutan",
+      "expected": "tidak tersedia",
+      "actual": "aturan lokal tanpa jurnal otomatis",
+      "note": "Tidak ada kebijakan di workbook; engine hanya menghitung, tidak membuat jurnal."
+    },
+    {
+      "status": "BLOCKED",
+      "category": "period",
+      "item": "Periode workbook vs tanggal jurnal",
+      "expected": "NERACA!A3 = Tahun 2026",
+      "actual": "2025-01-01 s/d 2025-12-31",
+      "note": "Tidak diubah; periode laporan website mengikuti tanggal transaksi."
+    }
+  ]
+}

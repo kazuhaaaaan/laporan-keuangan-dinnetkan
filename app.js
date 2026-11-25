@@ -18,6 +18,7 @@ function syncReport() {
 
 function renderDashboard() {
   initMeta();
+  renderValidation();
   renderKpis();
   renderChart();
   renderCosts();
@@ -77,9 +78,38 @@ function trend(current, previous, previousMonth) {
 function initMeta() {
   document.title = `${meta.title} ${meta.period}`;
   document.getElementById('retrievedAt').textContent = `Data dibaca: ${formatDate(meta.generatedAt)}`;
+  const eyebrow = document.getElementById('pageEyebrow');
+  if (eyebrow) {
+    eyebrow.textContent = journal.length ? `LAPORAN KEUANGAN · PERIODE ${meta.period}` : 'STATUS: DATA KOSONG · SILAKAN INPUT TRANSAKSI';
+  }
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+  const periodYear = /^\d{4}/.test(meta.period) ? meta.period.slice(-4) : '';
+  setText('kpiRevenueNote', periodYear ? `Akumulasi pendapatan tahun ${periodYear}` : 'Akumulasi pendapatan periode laporan');
+  setText('kpiExpenseNote', periodYear ? `Akumulasi biaya operasional ${periodYear}` : 'Akumulasi biaya operasional periode laporan');
+  setText('kpiCashNote', periodYear ? `Saldo kas dan bank per 31 Des ${periodYear}` : 'Saldo kas dan bank akhir periode');
+  setText('balanceNote', periodYear ? `Aset dan liabilitas per 31 Desember ${periodYear}.` : 'Aset dan liabilitas akhir periode.');
   ['sourceLink', 'sheetBtn', 'footerSource'].forEach((id) => {
     document.getElementById(id).setAttribute('href', meta.source);
   });
+}
+
+function renderValidation() {
+  const banner = document.getElementById('validationBanner');
+  if (!banner) return;
+  const diagnostics = meta.diagnostics || {};
+  const items = [
+    diagnostics.journalImbalance ? `Selisih jurnal ${money(diagnostics.journalImbalance)}` : '',
+    diagnostics.unmappedLines?.length ? `${diagnostics.unmappedLines.length} baris akun tidak dikenal (tidak ikut dihitung)` : '',
+    diagnostics.validationErrors?.length ? `${diagnostics.validationErrors.length} kesalahan validasi transaksi` : '',
+    Math.abs(diagnostics.inventoryVariance || 0) > 0.01 ? `Selisih persediaan vs kartu stok ${money(diagnostics.inventoryVariance)}` : '',
+  ].filter(Boolean);
+  banner.hidden = items.length === 0;
+  banner.textContent = items.length
+    ? `BLOCKED — ${items.join(' · ').toUpperCase()}. Data tidak dipaksa seimbang; periksa sumber sebelum memakai angka ini.`
+    : '';
 }
 
 function renderKpis() {
@@ -87,7 +117,7 @@ function renderKpis() {
   const previous = monthly.length > 1 ? monthly[monthly.length - 2] : { revenue: 0, expense: 0, month: '—' };
   const margin = summary.pendapatan ? (summary.laba / summary.pendapatan) * 100 : 0;
   const hasData = journal.length > 0;
-  const display = (amount) => (hasData ? money(amount) : '');
+  const display = (amount) => (hasData ? money(amount) : money(0));
 
   document.getElementById('kpiRevenue').textContent = display(summary.pendapatan);
   document.getElementById('kpiExpense').textContent = display(summary.biaya);
@@ -178,8 +208,14 @@ function renderComposition() {
   const hasData = journal.length > 0;
 
   const donut = document.getElementById('compositionDonut');
-  donut.style.background = `conic-gradient(#f59e0b 0 ${expensePercent}%, #2f6bff ${expensePercent}% 100%)`;
-  donut.innerHTML = `<div class="donut-label"><strong>${hasData ? `${profitPercent.toFixed(1)}%` : ''}</strong><span>margin laba</span></div>`;
+  if (hasData && summary.pendapatan > 0) {
+    donut.style.background = `conic-gradient(#f59e0b 0 ${expensePercent}%, #2f6bff ${expensePercent}% 100%)`;
+    donut.innerHTML = `<div class="donut-label"><strong>${profitPercent.toFixed(1)}%</strong><span>margin laba</span></div>`;
+  } else {
+    donut.style.background = `#e2e8f0`;
+    donut.innerHTML = `<div class="donut-label"><strong>0%</strong><span>belum ada data</span></div>`;
+  }
+
   document.getElementById('compositionLegend').innerHTML = hasData
     ? `
     <div><span><i style="background:#f59e0b"></i>Total biaya</span><strong>${shortMoney(summary.biaya)}</strong></div>
@@ -214,7 +250,9 @@ function renderBalance() {
 }
 
 function buildWorksheet() {
-  const activeRows = report.trialBalance.rows.filter((row) => row.debit || row.kredit);
+  const activeRows = report.trialBalance.rows.filter(
+    (row) => row.openingDebit || row.openingKredit || row.debit || row.kredit,
+  );
   const rows = activeRows.map((row) => {
     const isIncome = row.report === 'laba-rugi';
     return {
@@ -253,7 +291,9 @@ function buildWorksheet() {
 function renderWorksheet() {
   const body = document.getElementById('worksheetBody');
   const meta = document.getElementById('worksheetMeta');
-  const hasData = report.trialBalance.rows.some((row) => row.debit || row.kredit);
+  const hasData = report.trialBalance.rows.some(
+    (row) => row.openingDebit || row.openingKredit || row.debit || row.kredit,
+  );
   if (!hasData) {
     body.innerHTML = '<tr class="empty-row"><td colspan="10">Belum ada transaksi. Isi lewat form input transaksi untuk melihat neraca jalur.</td></tr>';
     meta.textContent = '';
@@ -285,9 +325,11 @@ function renderWorksheet() {
 }
 
 function accountType(code) {
-  if (code.startsWith('1.')) return 'kas';
-  if (code.startsWith('3.')) return 'pendapatan';
-  if (code.startsWith('5.')) return 'biaya';
+  const account = ACCOUNTS.find((item) => item.code === code || item.sourceCode === code || item.helper === code);
+  if (!account) return 'lainnya';
+  if (CASH_EQUIVALENT_NAMES.has(account.name)) return 'kas';
+  if (account.type === 'pendapatan') return 'pendapatan';
+  if (account.type === 'biaya') return 'biaya';
   return 'lainnya';
 }
 
@@ -297,11 +339,11 @@ function refreshFilterOptions() {
   monthFilter.innerHTML = '<option value="">Semua bulan</option>';
   monthly.forEach((item) => {
     const option = document.createElement('option');
-    option.value = item.number;
-    option.textContent = item.month;
+    option.value = item.key;
+    option.textContent = item.label;
     monthFilter.appendChild(option);
   });
-  monthFilter.value = monthly.some((item) => item.number === selectedMonth) ? selectedMonth : '';
+  monthFilter.value = monthly.some((item) => item.key === selectedMonth) ? selectedMonth : '';
 
   const accounts = [...new Map(journal.map((row) => [row[2], { code: row[2], name: row[3] }])).values()].sort((a, b) => a.code.localeCompare(b.code));
   const accountFilter = document.getElementById('accountFilter');
@@ -353,13 +395,27 @@ function applyFilters() {
   filteredJournal = journal.filter((row) => {
     const [date, description, code, name] = row;
     if (query && !`${description} ${code} ${name}`.toLowerCase().includes(query)) return false;
-    if (month && date.slice(5, 7) !== month) return false;
+    if (month && date.slice(0, 7) !== month) return false;
     if (account && code !== account) return false;
     if (type && accountType(code) !== type) return false;
     return true;
   });
 
   renderJournalTable();
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const element = document.createElement('div');
+  element.className = `toast ${type === 'error' ? 'error' : ''}`.trim();
+  element.textContent = message;
+  container.appendChild(element);
+  setTimeout(() => {
+    element.style.opacity = '0';
+    element.style.transform = 'translateY(8px)';
+    setTimeout(() => element.remove(), 250);
+  }, 3200);
 }
 
 function renderJournalTable() {
@@ -375,14 +431,23 @@ function renderJournalTable() {
         .map(
           (row) => `<tr>
             <td class="date">${formatDate(row[0])}</td>
-            <td>${escapeHtml(row[1])}</td>
-            <td class="account">${escapeHtml(row[2])} · ${escapeHtml(row[3])}</td>
-            <td class="num right">${row[4] ? money(row[4]) : '—'}</td>
-            <td class="num right">${row[5] ? money(row[5]) : '—'}</td>
+            <td class="tx-desc">${escapeHtml(row[1])}</td>
+            <td class="account"><span class="code-badge">${escapeHtml(row[2])}</span> ${escapeHtml(row[3])}</td>
+            <td class="num right num-debet">${row[4] ? money(row[4]) : '—'}</td>
+            <td class="num right num-kredit">${row[5] ? money(row[5]) : '—'}</td>
+            <td class="center">
+              ${
+                row[6]
+                  ? `<button class="icon-btn danger delete-tx-btn" type="button" data-ref="${escapeHtml(row[6])}" title="Hapus transaksi ini" aria-label="Hapus transaksi">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>`
+                  : '—'
+              }
+            </td>
           </tr>`,
         )
         .join('')
-    : '<tr class="empty-row"><td colspan="5">Tidak ada transaksi yang cocok dengan filter.</td></tr>';
+    : '<tr class="empty-row"><td colspan="6">Tidak ada transaksi yang cocok dengan filter.</td></tr>';
 
   const first = filteredJournal.length ? start + 1 : 0;
   const last = Math.min(start + pageSize, filteredJournal.length);
@@ -393,21 +458,54 @@ function renderJournalTable() {
   document.getElementById('nextPage').disabled = currentPage === totalPages;
 }
 
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function exportJournal() {
   const lines = [['Tanggal', 'Keterangan', 'Akun', 'Nama Akun', 'Debet', 'Kredit']];
   filteredJournal.forEach((row) => lines.push([formatDate(row[0]), row[1], row[2], row[3], row[4], row[5]]));
   const csv = lines
     .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(','))
     .join('\r\n');
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `jurnal-umum-${meta.period}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadFile(`\uFEFF${csv}`, `jurnal-umum-${meta.period}.csv`, 'text/csv;charset=utf-8;');
+  showToast('File CSV berhasil diunduh.');
+}
+
+function exportBackup() {
+  downloadFile(
+    exportFinanceBackup(),
+    `cadangan-keuangan-${meta.period}-${new Date().toISOString().slice(0, 10)}.json`,
+    'application/json',
+  );
+  showToast('Cadangan JSON berhasil diunduh.');
+}
+
+function importBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const result = importFinanceBackup(reader.result);
+      if (!result.ok) throw new Error(result.errors.join(' '));
+      syncReport();
+      renderDashboard();
+      showToast(`Cadangan dimuat: ${result.state.entries.length} transaksi.`);
+    } catch (error) {
+      showToast(`Cadangan ditolak: ${error.message}`, 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
 function initTransactionForm() {
@@ -419,28 +517,50 @@ function initTransactionForm() {
   const quantity = document.getElementById('txQuantity');
   const amount = document.getElementById('txAmount');
   const status = document.getElementById('formStatus');
+  const extraLines = document.getElementById('extraLines');
+  let lineSequence = 0;
 
-  ACCOUNTS.forEach((account) => {
+  const setStatus = (message, type = '') => {
+    status.textContent = message;
+    status.className = `form-status ${type}`.trim();
+  };
+
+  const accountOptions = ACCOUNTS.map((account) => {
     const sideLabel = account.side === 'debet' ? 'Debet' : 'Kredit';
-    [debit, credit].forEach((select) => {
-      const option = document.createElement('option');
-      option.value = account.code;
-      option.textContent = `${account.code} · ${account.name} · normal ${sideLabel}`;
-      select.appendChild(option);
-    });
-  });
+    return `<option value="${escapeHtml(account.code)}">${escapeHtml(account.code)} · ${escapeHtml(account.name)} (normal ${sideLabel})</option>`;
+  }).join('');
+  debit.innerHTML = accountOptions;
+  credit.innerHTML = accountOptions;
 
   INVENTORY_ITEMS.forEach((product) => {
     const option = document.createElement('option');
     option.value = product.code;
-    option.textContent = `${product.code} · ${product.name}`;
+    option.textContent = `${product.code} · ${product.name} (Rp${product.price.toLocaleString('id-ID')}/${product.unit})`;
     item.appendChild(option);
   });
 
+  const renderExtraLine = () => {
+    lineSequence += 1;
+    const row = document.createElement('div');
+    row.className = 'extra-line';
+    row.dataset.line = String(lineSequence);
+    row.innerHTML = `
+      <select class="extra-account" aria-label="Akun tambahan" required>${accountOptions}</select>
+      <select class="extra-side" aria-label="Posisi akun tambahan">
+        <option value="debet">Debet</option>
+        <option value="kredit">Kredit</option>
+      </select>
+      <input class="extra-amount" type="number" min="0.01" step="0.01" placeholder="Nominal" aria-label="Nominal baris tambahan" required />
+      <button class="btn btn-ghost danger-btn extra-remove" type="button" aria-label="Hapus baris">×</button>`;
+    extraLines.appendChild(row);
+  };
+
   const resetForm = () => {
     form.reset();
+    extraLines.innerHTML = '';
+    lineSequence = 0;
     document.getElementById('txDate').value = new Date().toISOString().slice(0, 10);
-    status.textContent = '';
+    setStatus('');
   };
 
   const updateAmount = () => {
@@ -454,6 +574,12 @@ function initTransactionForm() {
   [item, mutation, quantity].forEach((element) => {
     element.addEventListener('input', updateAmount);
     element.addEventListener('change', updateAmount);
+  });
+
+  document.getElementById('txAddLineBtn').addEventListener('click', () => renderExtraLine());
+  extraLines.addEventListener('click', (event) => {
+    if (!event.target.classList.contains('extra-remove')) return;
+    event.target.closest('.extra-line')?.remove();
   });
 
   form.addEventListener('submit', (event) => {
@@ -482,30 +608,53 @@ function initTransactionForm() {
       }
       if (!Number.isFinite(nominal) || nominal <= 0) throw new Error('Nominal harus lebih dari 0.');
 
-      const usesStock = debitCode === '1.2.13' || creditCode === '1.2.13';
-      if (usesStock && (!product || !mutationType || qty <= 0)) {
-        throw new Error('Transaksi PERSEDIAAN butuh barang, mutasi, dan jumlah.');
-      }
-      if (!usesStock && mutationType) {
-        throw new Error('Mutasi barang butuh akun PERSEDIAAN (1.2.13).');
-      }
-      if (mutationType === 'in' && debitCode !== '1.2.13') {
-        throw new Error('Mutasi masuk harus dibukukan ke debit PERSEDIAAN.');
-      }
-      if (mutationType === 'out' && creditCode !== '1.2.13') {
-        throw new Error('Mutasi keluar harus dibukukan ke kredit PERSEDIAAN.');
+      const lines = [
+        { code: debitCode, debit: nominal, kredit: 0 },
+        { code: creditCode, debit: 0, kredit: nominal },
+      ];
+
+      extraLines.querySelectorAll('.extra-line').forEach((row) => {
+        const code = row.querySelector('.extra-account').value;
+        const side = row.querySelector('.extra-side').value;
+        const value = Number(row.querySelector('.extra-amount').value);
+        if (!code) throw new Error('Pilih akun pada semua baris tambahan.');
+        if (!Number.isFinite(value) || value <= 0) throw new Error('Nominal baris tambahan harus lebih dari 0.');
+        const account = ACCOUNTS.find((item) => item.code === code);
+        if (account?.side !== side) {
+          throw new Error(`${account?.code || code} normalnya di ${account?.side === 'debet' ? 'Debet' : 'Kredit'}. Sesuaikan posisi baris.`);
+        }
+        lines.push(side === 'debet'
+          ? { code, debit: value, kredit: 0 }
+          : { code, debit: 0, kredit: value });
+      });
+
+      const totalDebit = lines.reduce((sum, line) => sum + line.debit, 0);
+      const totalKredit = lines.reduce((sum, line) => sum + line.kredit, 0);
+      if (Math.abs(totalDebit - totalKredit) > 0.01) {
+        throw new Error(`Jurnal tidak seimbang: debit ${money(totalDebit)} vs kredit ${money(totalKredit)}.`);
       }
 
-      const lines = [
-        { code: debitCode, debit: nominal },
-        { code: creditCode, kredit: nominal },
-      ];
+      const stockLines = lines.filter((line) => line.code === '1.2.13');
+      const usesStock = stockLines.length > 0;
+      if (usesStock && (!product || !mutationType || qty <= 0)) {
+        throw new Error('Transaksi PERSEDIAAN membutuhkan barang, arah mutasi, dan jumlah.');
+      }
+      if (!usesStock && mutationType) {
+        throw new Error('Mutasi barang hanya berlaku untuk akun PERSEDIAAN (1.2.13).');
+      }
+      if (mutationType === 'in' && !stockLines.some((line) => line.debit > 0)) {
+        throw new Error('Mutasi barang masuk harus dibukukan ke debit akun PERSEDIAAN (1.2.13).');
+      }
+      if (mutationType === 'out' && !stockLines.some((line) => line.kredit > 0)) {
+        throw new Error('Mutasi barang keluar harus dibukukan ke kredit akun PERSEDIAAN (1.2.13).');
+      }
       if (mutationType) {
-        lines.find((line) => line.code === '1.2.13').mutation = {
-          item: product.code,
-          type: mutationType,
-          quantity: qty,
-        };
+        const stockLine = mutationType === 'in'
+          ? stockLines.find((line) => line.debit > 0)
+          : stockLines.find((line) => line.kredit > 0);
+        if (stockLine) {
+          stockLine.mutation = { item: product.code, type: mutationType, quantity: qty };
+        }
       }
 
       addJournalEntry({
@@ -517,17 +666,46 @@ function initTransactionForm() {
       syncReport();
       renderDashboard();
       resetForm();
-      status.textContent = `Tersimpan. Jurnal berisi ${loadJournalEntries().length} transaksi.`;
+      const count = loadJournalEntries().length;
+      setStatus(`Tersimpan. Jurnal kini berisi ${count} transaksi.`, 'success');
+      showToast('Transaksi berhasil disimpan!');
     } catch (error) {
-      status.textContent = error.message;
+      setStatus(error.message, 'error');
+      showToast(error.message, 'error');
     }
   });
 
+  document.getElementById('backupJournalBtn').addEventListener('click', exportBackup);
+  document.getElementById('importJournalBtn').addEventListener('click', () => document.getElementById('journalImportFile').click());
+  document.getElementById('journalImportFile').addEventListener('change', importBackup);
+
   document.getElementById('clearJournalBtn').addEventListener('click', () => {
-    clearJournalEntries();
-    syncReport();
-    renderDashboard();
-    status.textContent = 'Jurnal dikosongkan.';
+    if (!journal.length) {
+      showToast('Jurnal sudah kosong.');
+      return;
+    }
+    if (confirm('Yakin ingin mengosongkan seluruh data transaksi jurnal? Cadangan JSON akan diunduh otomatis sebelum data dikosongkan.')) {
+      exportBackup();
+      clearJournalEntries();
+      syncReport();
+      renderDashboard();
+      setStatus('Seluruh transaksi jurnal telah dikosongkan.', 'info');
+      showToast('Jurnal berhasil dikosongkan.');
+    }
+  });
+
+  document.getElementById('journalBody').addEventListener('click', (event) => {
+    const btn = event.target.closest('.delete-tx-btn');
+    if (!btn) return;
+    const ref = btn.dataset.ref;
+    if (!ref) return;
+    if (confirm('Hapus transaksi ini dari jurnal umum?')) {
+      deleteJournalEntry(ref);
+      syncReport();
+      renderDashboard();
+      setStatus('Transaksi berhasil dihapus.', 'info');
+      showToast('Transaksi berhasil dihapus.');
+    }
   });
 
   resetForm();

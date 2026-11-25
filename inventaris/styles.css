@@ -1,21 +1,25 @@
 .kpi-items {
   --kpi-color: #7c5cff;
   --kpi-soft: rgba(124, 92, 255, 0.09);
+  border-top: 3px solid #7c5cff;
 }
 
 .kpi-stock {
   --kpi-color: var(--green);
   --kpi-soft: rgba(18, 166, 120, 0.09);
+  border-top: 3px solid var(--green);
 }
 
 .kpi-low {
   --kpi-color: var(--red);
   --kpi-soft: rgba(226, 86, 86, 0.1);
+  border-top: 3px solid var(--red);
 }
 
 .kpi-mutation {
   --kpi-color: var(--accent);
   --kpi-soft: rgba(47, 107, 255, 0.09);
+  border-top: 3px solid var(--accent);
 }
 
 .period-bar {

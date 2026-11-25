@@ -1,0 +1,19 @@
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node / Dependencies
+node_modules/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Local data & temp
+*.tmp
+*.bak
