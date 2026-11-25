@@ -377,7 +377,7 @@ function accountOptionsHtml() {
 }
 
 function refreshAccountOptions() {
-  ['txDebit', 'txCredit'].forEach((id) => {
+  ['txDebit', 'txCredit', 'txAccount'].forEach((id) => {
     const select = document.getElementById(id);
     if (!select) return;
     const selected = select.value;
@@ -587,54 +587,84 @@ function importBackup(event) {
 function initTransactionForm() {
   const form = document.getElementById('journalForm');
   if (!form) return;
-  const debit = document.getElementById('txDebit');
-  const credit = document.getElementById('txCredit');
+  const dateInput = document.getElementById('txDate');
+  const descriptionInput = document.getElementById('txDescription');
+  const account = document.getElementById('txAccount');
+  const side = document.getElementById('txSide');
+  const amount = document.getElementById('txAmount');
   const item = document.getElementById('txItem');
   const mutation = document.getElementById('txMutation');
   const quantity = document.getElementById('txQuantity');
-  const amount = document.getElementById('txAmount');
   const status = document.getElementById('formStatus');
-  const extraLines = document.getElementById('extraLines');
-  let lineSequence = 0;
+  const draftBody = document.getElementById('pendataanBody');
+  const draftSummary = document.getElementById('pendataanSummary');
+  const editInfo = document.getElementById('lineEditInfo');
+  const addButton = document.getElementById('txAddLineBtn');
+  if (!dateInput || !descriptionInput || !account || !side || !amount || !item || !mutation || !quantity || !status || !draftBody || !draftSummary || !editInfo || !addButton) return;
+
+  let pendingLines = [];
+  let editingIndex = null;
 
   const setStatus = (message, type = '') => {
     status.textContent = message;
     status.className = `form-status ${type}`.trim();
   };
 
-  debit.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
-  credit.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
+  const getTotals = () => pendingLines.reduce((totals, line) => {
+    if (line.side === 'debet') totals.debit += line.amount;
+    else totals.kredit += line.amount;
+    return totals;
+  }, { debit: 0, kredit: 0 });
 
+  const renderDraft = () => {
+    draftBody.innerHTML = pendingLines.map((line, index) => {
+      const selected = getAccountList().find((entry) => entry.code === line.code);
+      return `<tr>
+        <td class="account"><span class="code-badge">${escapeHtml(line.code)}</span></td>
+        <td>${escapeHtml(selected?.name || '')}</td>
+        <td>${line.side === 'debet' ? 'Debet' : 'Kredit'}</td>
+        <td class="num right">${money(line.amount)}</td>
+        <td class="center">
+          <button class="btn btn-ghost edit-line-btn" type="button" data-index="${index}">Ubah</button>
+          <button class="btn btn-ghost danger-btn remove-line-btn" type="button" data-index="${index}">Hapus</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr class="empty-row"><td colspan="5">Belum ada baris. Isi akun, posisi, dan nominal lalu klik Tambah ke Pendataan.</td></tr>';
+
+    const totals = getTotals();
+    const balanced = pendingLines.length > 0 && Math.abs(totals.debit - totals.kredit) <= 0.01;
+    draftSummary.classList.toggle('balanced', balanced);
+    draftSummary.innerHTML = `
+      <div><span>Total Debet</span><strong>${money(totals.debit)}</strong></div>
+      <div><span>Total Kredit</span><strong>${money(totals.kredit)}</strong></div>
+      <div><span>Selisih</span><strong>${money(Math.abs(totals.debit - totals.kredit))}</strong></div>`;
+  };
+
+  const clearLineInputs = () => {
+    account.value = '';
+    side.value = 'debet';
+    amount.value = '';
+    editingIndex = null;
+    addButton.textContent = 'Tambah ke Pendataan';
+    editInfo.textContent = '';
+  };
+
+  const resetForm = () => {
+    form.reset();
+    pendingLines = [];
+    dateInput.value = new Date().toISOString().slice(0, 10);
+    clearLineInputs();
+    renderDraft();
+    setStatus('');
+  };
+
+  account.innerHTML = `<option value="">Pilih akun</option>${accountOptionsHtml()}`;
   INVENTORY_ITEMS.forEach((product) => {
     const option = document.createElement('option');
     option.value = product.code;
     option.textContent = `${product.code} · ${product.name} (Rp${product.price.toLocaleString('id-ID')}/${product.unit})`;
     item.appendChild(option);
   });
-
-  const renderExtraLine = () => {
-    lineSequence += 1;
-    const row = document.createElement('div');
-    row.className = 'extra-line';
-    row.dataset.line = String(lineSequence);
-    row.innerHTML = `
-      <select class="extra-account" aria-label="Akun tambahan" required><option value="">Pilih akun</option>${accountOptionsHtml()}</select>
-      <select class="extra-side" aria-label="Posisi akun tambahan">
-        <option value="debet">Debet</option>
-        <option value="kredit">Kredit</option>
-      </select>
-      <input class="extra-amount" type="number" min="0.01" step="0.01" placeholder="Nominal" aria-label="Nominal baris tambahan" required />
-      <button class="btn btn-ghost danger-btn extra-remove" type="button" aria-label="Hapus baris">×</button>`;
-    extraLines.appendChild(row);
-  };
-
-  const resetForm = () => {
-    form.reset();
-    extraLines.innerHTML = '';
-    lineSequence = 0;
-    document.getElementById('txDate').value = new Date().toISOString().slice(0, 10);
-    setStatus('');
-  };
 
   const updateAmount = () => {
     const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
@@ -649,71 +679,100 @@ function initTransactionForm() {
     element.addEventListener('change', updateAmount);
   });
 
-  document.getElementById('txAddLineBtn').addEventListener('click', () => renderExtraLine());
-  extraLines.addEventListener('click', (event) => {
-    if (!event.target.classList.contains('extra-remove')) return;
-    event.target.closest('.extra-line')?.remove();
+  form.addEventListener('submit', (event) => event.preventDefault());
+
+  addButton.addEventListener('click', () => {
+    try {
+      if (!dateInput.value) throw new Error('Tanggal wajib diisi.');
+      if (!descriptionInput.value.trim()) throw new Error('Keterangan wajib diisi.');
+      const code = account.value;
+      if (!code) throw new Error('Pilih akun terlebih dahulu.');
+      const posisi = side.value;
+      if (!posisi) throw new Error('Pilih posisi Debet atau Kredit.');
+      const nominal = Number(amount.value);
+      if (!Number.isFinite(nominal) || nominal <= 0) throw new Error('Nominal harus lebih dari 0.');
+      const selected = getAccountList().find((entry) => entry.code === code);
+      if (selected && selected.side !== posisi) {
+        throw new Error(`${selected.code} ${selected.name} normalnya di ${selected.side === 'debet' ? 'Debet' : 'Kredit'}. Sesuaikan posisi.`);
+      }
+
+      const wasEditing = editingIndex !== null;
+      const line = { code, side: posisi, amount: nominal };
+      if (wasEditing) pendingLines[editingIndex] = line;
+      else pendingLines.push(line);
+      clearLineInputs();
+      renderDraft();
+      setStatus(wasEditing
+        ? 'Baris pendataan diperbarui.'
+        : `${code} · ${posisi} ${money(nominal)} ditambahkan ke pendataan.`, 'success');
+    } catch (error) {
+      setStatus(error.message, 'error');
+      showToast(error.message, 'error');
+    }
   });
 
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const date = document.getElementById('txDate').value;
-    const description = document.getElementById('txDescription').value.trim();
-    const debitCode = debit.value;
-    const creditCode = credit.value;
-    const nominal = Number(amount.value);
-    const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
-    const mutationType = mutation.value;
-    const qty = Number(quantity.value);
+  draftBody.addEventListener('click', (event) => {
+    const editButton = event.target.closest('.edit-line-btn');
+    if (editButton) {
+      const index = Number(editButton.dataset.index);
+      const line = pendingLines[index];
+      if (!line) return;
+      account.value = line.code;
+      side.value = line.side;
+      amount.value = String(line.amount);
+      editingIndex = index;
+      addButton.textContent = 'Perbarui Pendataan';
+      editInfo.textContent = `Mengubah baris ${index + 1}. Klik Perbarui Pendataan untuk menyimpan perubahan.`;
+      setStatus('');
+      account.focus();
+      return;
+    }
 
+    const removeButton = event.target.closest('.remove-line-btn');
+    if (!removeButton) return;
+    const index = Number(removeButton.dataset.index);
+    if (!Number.isInteger(index) || !pendingLines[index]) return;
+    pendingLines.splice(index, 1);
+    if (editingIndex !== null) {
+      if (index === editingIndex) clearLineInputs();
+      else if (index < editingIndex) editingIndex -= 1;
+    }
+    renderDraft();
+    setStatus('Baris dihapus dari pendataan.', 'info');
+  });
+
+  const clearDraft = () => {
+    pendingLines = [];
+    clearLineInputs();
+    renderDraft();
+    setStatus('Pendataan dikosongkan.', 'info');
+  };
+
+  const saveButton = document.getElementById('saveJournalBtn');
+  saveButton?.addEventListener('click', () => {
     try {
-      if (!date) throw new Error('Tanggal wajib diisi.');
-      if (!description) throw new Error('Keterangan wajib diisi.');
-      if (!debitCode || !creditCode) throw new Error('Pilih akun debit dan kredit.');
-      if (debitCode === creditCode) throw new Error('Akun debit dan kredit harus berbeda.');
-      const accountList = getAccountList();
-      const debitAccount = accountList.find((account) => account.code === debitCode);
-      const creditAccount = accountList.find((account) => account.code === creditCode);
-      if (debitAccount?.side === 'kredit') {
-        throw new Error(`${debitAccount.code} ${debitAccount.name} normalnya di Kredit. Pindah ke kolom Akun Kredit.`);
-      }
-      if (creditAccount?.side === 'debet') {
-        throw new Error(`${creditAccount.code} ${creditAccount.name} normalnya di Debet. Pindah ke kolom Akun Debet.`);
-      }
-      if (!Number.isFinite(nominal) || nominal <= 0) throw new Error('Nominal harus lebih dari 0.');
-
-      const lines = [
-        { code: debitCode, debit: nominal, kredit: 0 },
-        { code: creditCode, debit: 0, kredit: nominal },
-      ];
-
-      extraLines.querySelectorAll('.extra-line').forEach((row) => {
-        const code = row.querySelector('.extra-account').value;
-        const side = row.querySelector('.extra-side').value;
-        const value = Number(row.querySelector('.extra-amount').value);
-        if (!code) throw new Error('Pilih akun pada semua baris tambahan.');
-        if (!Number.isFinite(value) || value <= 0) throw new Error('Nominal baris tambahan harus lebih dari 0.');
-        const account = getAccountList().find((item) => item.code === code);
-        if (account?.side !== side) {
-          throw new Error(`${account?.code || code} normalnya di ${account?.side === 'debet' ? 'Debet' : 'Kredit'}. Sesuaikan posisi baris.`);
-        }
-        lines.push(side === 'debet'
-          ? { code, debit: value, kredit: 0 }
-          : { code, debit: 0, kredit: value });
-      });
-
-      const totalDebit = lines.reduce((sum, line) => sum + line.debit, 0);
-      const totalKredit = lines.reduce((sum, line) => sum + line.kredit, 0);
-      if (Math.abs(totalDebit - totalKredit) > 0.01) {
-        throw new Error(`Jurnal tidak seimbang: debit ${money(totalDebit)} vs kredit ${money(totalKredit)}.`);
+      if (!dateInput.value) throw new Error('Tanggal wajib diisi.');
+      if (!descriptionInput.value.trim()) throw new Error('Keterangan wajib diisi.');
+      if (!pendingLines.length) throw new Error('Belum ada baris di pendataan. Tambahkan baris Debet dan Kredit.');
+      if (!pendingLines.some((line) => line.side === 'debet')) throw new Error('Jurnal harus memiliki baris Debet.');
+      if (!pendingLines.some((line) => line.side === 'kredit')) throw new Error('Jurnal harus memiliki baris Kredit.');
+      const totals = getTotals();
+      if (Math.abs(totals.debit - totals.kredit) > 0.01) {
+        throw new Error(`Jurnal tidak seimbang: debit ${money(totals.debit)} vs kredit ${money(totals.kredit)}.`);
       }
 
+      const lines = pendingLines.map((line) => (line.side === 'debet'
+        ? { code: line.code, debit: line.amount, kredit: 0 }
+        : { code: line.code, debit: 0, kredit: line.amount }));
+
+      const product = INVENTORY_ITEMS.find((entry) => entry.code === item.value);
+      const mutationType = mutation.value;
+      const qty = Number(quantity.value);
       const stockLines = lines.filter((line) => line.code === '1.2.13');
-      const usesStock = stockLines.length > 0;
-      if (usesStock && (!product || !mutationType || qty <= 0)) {
+      if (stockLines.length && (!product || !mutationType || qty <= 0)) {
         throw new Error('Transaksi PERSEDIAAN membutuhkan barang, arah mutasi, dan jumlah.');
       }
-      if (!usesStock && mutationType) {
+      if (!stockLines.length && mutationType) {
         throw new Error('Mutasi barang hanya berlaku untuk akun PERSEDIAAN (1.2.13).');
       }
       if (mutationType === 'in' && !stockLines.some((line) => line.debit > 0)) {
@@ -726,46 +785,45 @@ function initTransactionForm() {
         const stockLine = mutationType === 'in'
           ? stockLines.find((line) => line.debit > 0)
           : stockLines.find((line) => line.kredit > 0);
-        if (stockLine) {
-          stockLine.mutation = { item: product.code, type: mutationType, quantity: qty };
-        }
+        if (stockLine) stockLine.mutation = { item: product.code, type: mutationType, quantity: qty };
       }
 
       addJournalEntry({
-        date,
-        description,
+        date: dateInput.value,
+        description: descriptionInput.value.trim(),
         ref: `JRN-${Date.now().toString(36).toUpperCase()}`,
         lines,
       });
       syncReport();
       renderDashboard();
-      resetForm();
       const count = loadJournalEntries().length;
+      resetForm();
       setStatus(`Tersimpan. Jurnal kini berisi ${count} transaksi.`, 'success');
-      showToast('Transaksi berhasil disimpan!');
+      showToast('Jurnal berhasil disimpan!');
     } catch (error) {
       setStatus(error.message, 'error');
       showToast(error.message, 'error');
     }
   });
 
-  document.getElementById('backupJournalBtn').addEventListener('click', exportBackup);
-  document.getElementById('importJournalBtn').addEventListener('click', () => document.getElementById('journalImportFile').click());
-  document.getElementById('journalImportFile').addEventListener('change', importBackup);
+  document.getElementById('clearDraftBtn')?.addEventListener('click', clearDraft);
+  document.getElementById('backupJournalBtn')?.addEventListener('click', exportBackup);
+  document.getElementById('importJournalBtn')?.addEventListener('click', () => document.getElementById('journalImportFile').click());
+  document.getElementById('journalImportFile')?.addEventListener('change', importBackup);
 
-  document.getElementById('clearJournalBtn').addEventListener('click', () => {
+  document.getElementById('clearJournalBtn')?.addEventListener('click', () => {
     if (!journal.length) {
       showToast('Jurnal sudah kosong.');
       return;
     }
-    if (confirm('Yakin ingin mengosongkan seluruh data transaksi jurnal? Cadangan JSON akan diunduh otomatis sebelum data dikosongkan.')) {
-      exportBackup();
-      clearJournalEntries();
-      syncReport();
-      renderDashboard();
-      setStatus('Seluruh transaksi jurnal telah dikosongkan.', 'info');
-      showToast('Jurnal berhasil dikosongkan.');
-    }
+    if (!confirm('Yakin ingin mengosongkan seluruh data transaksi jurnal? Cadangan JSON akan diunduh otomatis sebelum data dikosongkan.')) return;
+    exportBackup();
+    clearJournalEntries();
+    syncReport();
+    renderDashboard();
+    resetForm();
+    setStatus('Seluruh transaksi jurnal telah dikosongkan.', 'info');
+    showToast('Jurnal berhasil dikosongkan.');
   });
 
   resetForm();

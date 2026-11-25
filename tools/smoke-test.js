@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, '..');
 const mainPages = [
   'index.html',
   'kode-akun.html',
-  'input-data.html',
+  'input-jurnal.html',
   'jurnal-umum.html',
   'neraca-jalur.html',
   'laba-rugi.html',
@@ -49,7 +49,7 @@ const commonIds = [
 const pageIds = {
   'index.html': ['kpiRevenue', 'monthlyChart', 'costCount', 'compositionDonut'],
   'kode-akun.html': ['accountForm', 'accountStatus', 'accountSearch', 'accountCount', 'accountBody', 'acctCode', 'acctName', 'acctType', 'acctSide'],
-  'input-data.html': ['journalForm', 'txDate', 'txDescription', 'txDebit', 'txCredit', 'txAmount', 'extraLines', 'txAddLineBtn', 'txItem', 'txMutation', 'txQuantity', 'formStatus', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
+  'input-jurnal.html': ['journalForm', 'txDate', 'txDescription', 'txAccount', 'txSide', 'txAmount', 'txAddLineBtn', 'lineEditInfo', 'pendataanBody', 'pendataanSummary', 'saveJournalBtn', 'clearDraftBtn', 'formStatus', 'txItem', 'txMutation', 'txQuantity', 'backupJournalBtn', 'importJournalBtn', 'journalImportFile', 'clearJournalBtn'],
   'jurnal-umum.html': ['journalSearch', 'monthFilter', 'accountFilter', 'typeFilter', 'journalBody', 'journalCount', 'journalTotals', 'pageInfo', 'prevPage', 'nextPage', 'exportBtn'],
   'neraca-jalur.html': ['worksheetBody', 'worksheetMeta'],
   'laba-rugi.html': ['revenueBody', 'expenseBody', 'incomeMeta', 'incomeNote', 'incomeSummary'],
@@ -75,6 +75,13 @@ for (const source of allPages) {
     check(`${source}: tautan ${href}`, html.includes(`href="${href}"`) && fs.existsSync(target), fs.existsSync(target) ? 'file ada' : 'file tidak ada');
   }
 }
+
+const redirectHtml = fs.readFileSync(path.join(ROOT, 'input-data.html'), 'utf8');
+check(
+  'input-data.html: redirect ke input-jurnal.html',
+  redirectHtml.includes('href="input-jurnal.html"') && redirectHtml.includes('url=input-jurnal.html'),
+  'tautan dan meta refresh tersedia',
+);
 
 function createEngine(storage = {}) {
   const store = { ...storage };

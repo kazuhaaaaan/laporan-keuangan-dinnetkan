@@ -2,7 +2,7 @@
 
 ## 1. Ringkasan
 
-Situs laporan keuangan ini adalah aplikasi statis HTML/CSS/JS tanpa build tool, `package.json`, atau server. Perhitungan laporan terpusat di `data.js`; tampilan memakai `app.js` dan `styles.css` secara bersama oleh halaman `index.html`, `kode-akun.html`, `input-data.html`, `jurnal-umum.html`, `neraca-jalur.html`, `laba-rugi.html`, `neraca.html`, serta halaman inventaris di `inventaris/`.
+Situs laporan keuangan ini adalah aplikasi statis HTML/CSS/JS tanpa build tool, `package.json`, atau server. Perhitungan laporan terpusat di `data.js`; tampilan memakai `app.js` dan `styles.css` secara bersama oleh halaman `index.html`, `kode-akun.html`, `input-jurnal.html`, `jurnal-umum.html`, `neraca-jalur.html`, `laba-rugi.html`, `neraca.html`, serta halaman inventaris di `inventaris/`. Link lama `input-data.html` hanya menjadi pengalih ke `input-jurnal.html`.
 
 Status saat ini: **siap dipakai dengan batasan data sumber yang terdokumentasi**. Tidak ada `FAIL` pada pengujian parity. Angka yang tidak dapat diverifikasi atau memang bermasalah diberi status `BLOCKED`, `DEVIATION`, atau `SKIP` — bukan `PASS`.
 
@@ -51,7 +51,7 @@ Hasil terakhir:
 ```text
 syntax checks        : 3/3 OK
 parity-test.js       : PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2 | FAIL 0
-smoke-test.js        : 72/72 PASS
+smoke-test.js        : 73/73 PASS
 ```
 
 Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARITY_TEST.md`.
@@ -64,7 +64,8 @@ Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARI
 | `app.js` | Dimodifikasi | Renderer/page guard, filter, banner, form multi-baris, cadangan, aksi jurnal |
 | `index.html` | Dimodifikasi | Halaman ringkasan + analisis, branding, banner, periode dinamis |
 | `kode-akun.html` | Baru | Halaman kelola kode akun |
-| `input-data.html` | Baru | Halaman input jurnal dan cadangan |
+| `input-jurnal.html` | Baru | Form jurnal per baris + tabel pendataan yang bisa diubah/dihapus |
+| `input-data.html` | Baru | Redirect statis ke `input-jurnal.html` |
 | `jurnal-umum.html` | Baru | Halaman filter, pagination, ekspor, dan hapus transaksi |
 | `neraca-jalur.html` | Baru | Halaman worksheet neraca jalur |
 | `laba-rugi.html` | Baru | Halaman laporan laba rugi |
@@ -99,7 +100,7 @@ Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keu
 3. Baris mutasi inventaris berlabel `Jurnal` berasal dari jurnal umum dan tidak bisa dihapus langsung di halaman inventaris; hapus/hubah jurnal sumbernya.
 4. Penurunan harga hanya mengubah nilai barang di laporan inventaris. Tidak ada jurnal penyusutan otomatis sampai kebijakan ditetapkan.
 5. Filter bulan memakai `YYYY-MM`, sehingga Januari 2025 dan Januari 2026 tidak lagi bercampur.
-6. Form jurnal dapat memiliki lebih dari dua baris; total debit harus sama dengan total kredit.
+6. Form **Input Jurnal** menyimpan tanggal dan keterangan sekali per transaksi. Tiap baris berisi akun, posisi Debet/Kredit, dan nominal; baris dikumpulkan dulu di tabel **Pendataan Jurnal**, bisa diubah/dihapus, lalu disimpan setelah total debit sama dengan kredit.
 7. Setiap menu sidebar membuka halamannya sendiri; **Ringkasan** dan **Analisis** tetap merupakan bagian dari `index.html`, sedangkan **Inventaris** membuka `inventaris/index.html` dan tautan baliknya memakai `../index.html`.
 
 ## 8. Item BLOCKED / SKIP aktif
