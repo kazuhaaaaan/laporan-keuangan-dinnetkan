@@ -13,6 +13,8 @@ Perubahan awal tercatat **2026-11-25**; integrasi Supabase normalized dan build 
 - Barang inventaris baru bisa dibuat langsung dari Input Jurnal dan langsung tersedia untuk mutasi serta halaman Inventaris.
 - Setiap jurnal yang disimpan otomatis tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca**.
 - Integrasi **Supabase** penuh ke 9 tabel yang sudah ada (`profiles`, `accounts`, `auxiliary_accounts`, `opening_balances`, `fiscal_periods`, `journal_entries`, `journal_lines`, `inventory`, `inventory_movements`). `supabase-client.js` adalah client terpusat; `supabase-mapper.js` menerjemahkan state lokal ↔ baris DB dengan UUID deterministik. Auth (login/logout/sesi/role admin·staff·viewer), tombol **Tarik/Kirim**, loading/error/empty state, dan hapus draft tersedia. Panduan ada di `SUPABASE.md`.
+- Perbaikan penulisan data: `account_type` dan `normal_balance` diterjemahkan ke nilai constraint DB (`asset`/`debit`, dll.) dan dikembalikan ke ejaan lokal saat tarik. Sebelumnya insert jurnal gagal dengan `23514 accounts_account_type_check`.
+- Migrasi aman: saat login dengan DB kosong tetapi `localStorage` berisi data, aplikasi otomatis mengirim data lokal terlebih dahulu sehingga tidak ditimpa state kosong. Akun admin uji dibuat dan alur tulis–baca 8 tabel bisnis diverifikasi end-to-end.
 - Manajemen kode akun di web: tambah akun kustom, hapus akun yang belum dipakai, dan sinkronisasi ke laporan serta cadangan JSON.
 - `data.js`
   - `getInventoryItemDefinitions()` menggabungkan barang bawaan dan barang lokal dari localStorage sehingga mutasi jurnal mengenali barang yang dibuat dari Input Jurnal; ID barang lokal dipertahankan agar transaksi turunan tampil di halaman Inventaris.
@@ -81,7 +83,8 @@ Perubahan awal tercatat **2026-11-25**; integrasi Supabase normalized dan build 
 
 - `node --check data.js`, `node --check app.js`, `node --check inventaris/app.js` → OK.
 - `node tools/parity-test.js` → `PASS 15`, `DEVIATION 1`, `BLOCKED 5`, `SKIP 2`, `FAIL 0`.
-- `node tools/smoke-test.js` → 88 dari 88 pemeriksaan PASS (ID tiap halaman, redirect, combobox akun, env/client/auth Supabase, mapping 9 tabel, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test mapper).
+- `node tools/smoke-test.js` → 91 dari 91 pemeriksaan PASS (ID tiap halaman, redirect, combobox akun, env/client/auth Supabase, mapping 9 tabel, constraint mapping, deteksi data lokal, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test mapper).
+- Uji end-to-end Supabase dengan sesi admin: 124 akun + jurnal 2 baris + inventaris berhasil ditulis (`201`), dibaca kembali (`200`), lalu dibersihkan (`204`). Uji viewer ditolak RLS (`403`), anon ditolak (`401`).
 - `npm run build` → sukses; `dist/` berisi HTML, bundle Supabase, `data.js`, `app.js`, `inventaris/app.js`, dan `CNAME`. Konfigurasi env tersemat dari `.env.local`, placeholder tidak ada.
 
 ## Catatan versi

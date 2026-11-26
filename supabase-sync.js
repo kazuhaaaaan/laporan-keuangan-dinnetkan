@@ -1,6 +1,6 @@
 import { config } from './supabase-config.js';
 import { supabase, requireSupabase } from './supabase-client.js';
-import { TABLES, buildRemoteSnapshot, buildLocalSnapshot } from './supabase-mapper.js';
+import { TABLES, buildRemoteSnapshot, buildLocalSnapshot, hasLocalSnapshotData } from './supabase-mapper.js';
 
 const FINANCE_KEY = 'dinetkan-finance-v1';
 const INVENTORY_KEY = 'dinetkan-inventory-v1';
@@ -151,6 +151,22 @@ export async function pullAll() {
   try {
     const raw = await Promise.all(TABLES.map((table) => fetchAllRows(table)));
     const rows = Object.fromEntries(TABLES.map((table, index) => [table, raw[index]]));
+    const businessTables = TABLES.filter((table) => table !== 'profiles');
+    const businessRows = businessTables.reduce((total, table) => total + rows[table].length, 0);
+
+    // DB masih kosong tapi browser punya data: jangan timpa dengan data kosong.
+    // Ini jalur migrasi pertama kali login.
+    if (!businessRows) {
+      const localFinance = readLocal(FINANCE_KEY) || {};
+      const localInventory = readLocal(INVENTORY_KEY) || {};
+      if (hasLocalSnapshotData(localFinance, localInventory)) {
+        setStatus('Supabase: memindahkan data lokal...', 'busy');
+        const pushed = await pushAll();
+        if (pushed.ok) return { ...pushed, migrated: true };
+        return pushed;
+      }
+    }
+
     const builtinCodes = typeof window.getAccountList === 'function'
       ? window.getAccountList().map((account) => account.code)
       : [];
@@ -169,12 +185,11 @@ export async function pullAll() {
       applyingRemote = false;
     }
 
-    const totalRows = raw.reduce((total, rows) => total + rows.length, 0);
-    setStatus(totalRows ? 'Supabase: tersinkron' : 'Supabase: kosong', totalRows ? 'ok' : '');
+    setStatus(businessRows ? 'Supabase: tersinkron' : 'Supabase: kosong', businessRows ? 'ok' : '');
     emit('dinetkan:remote-updated', {
       finance: local.finance.entries.length,
       inventory: local.inventory.items.length,
-      empty: totalRows === 0,
+      empty: businessRows === 0,
     });
     return { ok: true, ...local };
   } catch (error) {

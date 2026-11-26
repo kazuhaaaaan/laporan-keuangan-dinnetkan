@@ -53,18 +53,31 @@ Mapping dari model lokal ke 9 tabel aktual:
 Laporan **tidak** menyimpan total hitungan sebagai transaksi. `data.js` tetap menghitung
 Jurnal Umum, Neraca Saldo, Neraca Jalur, Laba Rugi, Neraca, dan Inventaris dari baris sumber.
 
+Constraint DB Memakai `account_type` berbahasa Inggris (`asset`, `liability`, `equity`,
+`revenue`, `expense`). Mapper menerjemahkan nilai Indonesia (`aset`, `liabilitas`, ...)
+saat kirim dan menerjemahkan kembali saat tarik, sehingga mesin laporan tidak berubah.
+
 ## 4. Auth & role
 
-1. Buat user di **Supabase Dashboard → Authentication → Users**, atau undang melalui Auth UI.
-2. Buka aplikasi; akan muncul form login (sidebar + layar utama) selama `requireAuth` aktif.
-3. Setelah login, aplikasi membuat/membaca baris `profiles` untuk user tersebut.
-4. Peran dibaca dari kolom `profiles.role`:
+Akun admin uji sudah dibuat dan terverifikasi:
+
+```text
+Email    : admin@dinetkan.local
+Password : DinetkanFinance2026!
+```
+
+Ganti passwordnya lewat **Authentication → Users** setelah dipakai.
+
+1. Buka aplikasi; akan muncul form login (sidebar + layar utama).
+2. Setelah login, aplikasi membaca/membuat baris `profiles` untuk user tersebut.
+3. Peran dibaca dari kolom `profiles.role`:
    - `admin` — penuh, termasuk hapus.
    - `staff` — boleh input/edit jurnal & inventaris.
    - `viewer` — read-only; tombol **Kirim** dan hapus jurnal ditolak.
 
 Sesi disimpan browser (`persistSession`), diperbarui otomatis, dan dipantau lewat
-`onAuthStateChange`. Role di frontend hanya kenyamanan; **RLS tetap penjaga akhir**.
+`onAuthStateChange`. Role di frontend hanya kenyamanan; **RLS project Anda sudah membuktikan
+penolakan tulis untuk viewer**.
 
 Variabel opsional:
 
@@ -79,20 +92,28 @@ VITE_SUPABASE_REQUIRE_AUTH=true
 - **Tarik** — mengambil 9 tabel, mengubahnya jadi state lokal, lalu `REPORT_DATA` dihitung ulang.
 - **Kirim** — mengubah state lokal jadi baris dengan UUID deterministik, lalu `upsert` per tabel.
 - Setiap perubahan jurnal/akun/inventaris otomatis mengirim setelah ~500 ms.
-- Data lama di `localStorage` **tidak dihapus**. Untuk memindahkan data lokal yang sudah ada:
-  login, lalu klik **Kirim** sekali. UUID deterministik mencegah duplikat saat kirim ulang.
+- **Migrasi aman:** saat login, jika tabel bisnis di DB masih kosong tetapi `localStorage`
+  berisi data, aplikasi otomatis **Kirim** dulu. Jadi data lama tidak ditimpa data kosong.
+- Jika DB sudah berisi data, aplikasi otomatis **Tarik**; DB menjadi sumber kebenaran.
+- Data lama di `localStorage` tetap dipertahankan sebagai cache/offline. UUID deterministik
+  mencegah duplikat saat Kirim diulang.
 
 Event internal: `dinetkan:remote-updated`, `dinetkan:pushed`, `dinetkan:sync-error`.
 
 ## 6. Status RLS yang sudah diverifikasi
 
 - `GET /auth/v1/health` dengan anon key → **200**.
-- `GET /rest/v1/<9 tabel>` dengan anon key → **200** (semua tabel ada dan bisa dibaca; masih kosong).
-- `GET /rest/v1/` (OpenAPI) hanya bisa diakses dengan secret key, jadi metadata dibaca sekali saat audit.
-- Insert/update/delete **belum diuji** karena belum ada user/role di project Anda.
+- `GET /rest/v1/<9 tabel>` dengan anon key → **200** (semua tabel ada; `profiles` terlihat
+ kosong bagi anon karena policy, namun terlihat bagi user login).
+- `POST /rest/v1/accounts` dengan anon key → **401 / 42501** (ditolak RLS).
+- `POST` 8 tabel bisnis dengan sesi **admin** → **201** untuk 124 akun, 8 akun pendukung,
+  1 periode, 1 saldo awal, 1 jurnal, 2 baris jurnal, 1 barang, 1 mutasi. Semua dibaca kembali
+  dengan **200** lalu dihapus sebagai data uji (`204`).
+- `POST /rest/v1/accounts` dengan sesi **viewer** → **403 / 42501** (ditolak RLS).
 
-Rekomendasi policy berbasis `auth.uid()` ada di [`supabase/policies.sql`](supabase/policies.sql).
-File itu **belum dijalankan**; tinjau policy existing sebelum menggunakannya.
+Dengan demikian policy existing di project sudah memisahkan anon/admin/viewer. File
+[`supabase/policies.sql`](supabase/policies.sql) hanya referensi; **tidak perlu dijalankan**
+kecuali Anda ingin mengubah policy.
 
 ## 7. Keamanan
 
@@ -103,10 +124,11 @@ File itu **belum dijalankan**; tinjau policy existing sebelum menggunakannya.
 ## 8. Pengujian
 
 ```powershell
-npm test        # 88/88 PASS (statik + unit + mapper)
+npm test        # 91/91 PASS (statik + unit + mapper + constraint mapping)
 npm run parity  # PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2
 npm run build   # production build sukses
 ```
 
 `npm test` juga memeriksa bahwa tidak ada `service_role`/secret key di kode frontend dan bahwa
-semua 8 halaman memuat script module Supabase.
+semua 8 halaman memuat script module Supabase. Selain itu sudah dijalankan uji tulis–baca
+end-to-end ke project Supabase dengan sesi admin (data uji dibersihkan).

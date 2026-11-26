@@ -368,6 +368,30 @@ async function checkSupabaseMapper() {
       && mapper.isUuid(mapper.uuidFor('account', '1.1.01')),
     'id stabil sehingga tidak ada duplikat',
   );
+  check(
+    'mapper: account_type/side sesuai constraint DB',
+    snapshot.accounts[0].account_type === 'asset'
+      && snapshot.accounts[0].normal_balance === 'debit'
+      && local.finance.accounts[0]?.type === 'aset'
+      && local.finance.accounts[0]?.side === 'debet',
+    `remote=${snapshot.accounts[0].account_type}/${snapshot.accounts[0].normal_balance}, lokal=${local.finance.accounts[0]?.type}/${local.finance.accounts[0]?.side}`,
+  );
+  const types = ['aset', 'liabilitas', 'ekuitas', 'pendapatan', 'biaya'];
+  check(
+    'mapper: kelima tipe akun punya padanan DB',
+    types.every((type) => {
+      const remote = mapper.toDbAccountType(type);
+      return ['asset', 'liability', 'equity', 'revenue', 'expense'].includes(remote)
+        && mapper.toLocalAccountType(remote) === type;
+    }),
+    types.map((type) => `${type}→${mapper.toDbAccountType(type)}`).join(', '),
+  );
+  check(
+    'mapper: deteksi data lokal untuk migrasi aman',
+    mapper.hasLocalSnapshotData(finance, inventory)
+      && !mapper.hasLocalSnapshotData({}, {}),
+    'DB kosong tidak menimpa data lokal'
+  );
 }
 
 (async () => {

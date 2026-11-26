@@ -51,8 +51,10 @@ Hasil terakhir:
 ```text
 syntax checks        : 5/5 OK
 parity-test.js       : PASS 15 | DEVIATION 1 | BLOCKED 5 | SKIP 2 | FAIL 0
-smoke-test.js        : 88/88 PASS
+smoke-test.js        : 91/91 PASS
 npm run build        : OK (dist/ siap deploy)
+e2e Supabase admin   : 8 tabel bisnis POST 201, GET 200, cleanup 204
+RLS viewer/anon      : POST ditolak (403/401)
 ```
 
 Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARITY_TEST.md`.
@@ -65,10 +67,10 @@ Rincian mesin: `tools/parity-results.json`. Penjelasan tiap baris: `FORMULA_PARI
 | `app.js` | Dimodifikasi | Renderer/page guard, filter, banner, form multi-baris, cadangan, aksi jurnal, listener sinkron |
 | `supabase-config.js` | Dimodifikasi | Config dari `VITE_SUPABASE_*`, flag auto pull/push, `requireAuth` |
 | `supabase-client.js` | Baru | Client `@supabase/supabase-js` terpusat (anon key saja) |
-| `supabase-mapper.js` | Baru | Mapping state lokal ↔ 9 tabel + UUID deterministik + encode mutasi |
-| `supabase-sync.js` | Dimodifikasi | Auth, CRUD normalized, Tarik/Kirim, status, event refresh |
+| `supabase-mapper.js` | Dimodifikasi | Mapping state lokal ↔ 9 tabel + UUID deterministik + encode mutasi + terjemahan constraint |
+| `supabase-sync.js` | Dimodifikasi | Auth, CRUD normalized, Tarik/Kirim, migrasi aman DB kosong, status, event refresh |
 | `supabase/schema.sql` | Dimodifikasi | Ringkasan skema aktual hasil inspeksi (bukan DDL) |
-| `supabase/policies.sql` | Baru | Rekomendasi RLS berbasis `auth.uid()` (belum dijalankan) |
+| `supabase/policies.sql` | Baru | Referensi RLS; policy existing sudah teruji, file ini tidak dipakai otomatis |
 | `package.json`, `vite.config.cjs` | Baru | Dependency Supabase + build multi-page; script statik tetap disalin |
 | `.env.example`, `.gitignore` | Baru/Dimodifikasi | Template env tanpa kredensial; `.env.local` diabaikan Git |
 | `index.html` | Dimodifikasi | Halaman ringkasan + analisis, branding, banner, periode dinamis |
@@ -113,7 +115,7 @@ Penghapusan seluruh jurnal mengunduh cadangan JSON terlebih dahulu. Cadangan keu
 7. Barang baru bisa ditambahkan dari panel mutasi di Input Jurnal; barang tersebut masuk ke `dinetkan-inventory-v1` dan dapat dipilih untuk mutasi sekaligus tampil di halaman Inventaris.
 8. Setelah jurnal disimpan, transaksi langsung tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca** karena keempatnya dibangun dari `REPORT_DATA` yang sama.
 9. Setiap menu sidebar membuka halamannya sendiri; **Ringkasan** dan **Analisis** tetap merupakan bagian dari `index.html`, sedangkan **Inventaris** membuka `inventaris/index.html` dan tautan baliknya memakai `../index.html`.
-10. Supabase aktif jika `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` ada di `.env.local`. Login dibutuhkan (`VITE_SUPABASE_REQUIRE_AUTH` bisa diubah), peran diambil dari `profiles.role`, dan tombol **Tarik/Kirim** tersedia. localStorage tetap dipakai sebagai cache/offline dan tidak dihapus saat migrasi.
+10. Supabase aktif jika `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` ada di `.env.local`. Login dibutuhkan (`VITE_SUPABASE_REQUIRE_AUTH` bisa diubah), peran diambil dari `profiles.role`, dan tombol **Tarik/Kirim** tersedia. Data yang diinput otomatis masuk DB; saat DB kosong dan localStorage berisi data, aplikasi mengirim data lokal dulu sebelum menarik. localStorage tetap dipakai sebagai cache/offline dan tidak dihapus saat migrasi.
 
 ## 8. Item BLOCKED / SKIP aktif
 

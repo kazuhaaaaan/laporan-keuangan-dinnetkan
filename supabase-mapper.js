@@ -17,6 +17,50 @@ export const TABLES = [
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MUTATION_RE = /\s\[mutasi:([^:\]]+):(in|out):([0-9.]+)\]$/i;
 
+// Constraint di project Supabase memakai nama Inggris untuk account_type.
+// Nilai lokal tetap Indonesia supaya mesin laporan tidak berubah.
+const ACCOUNT_TYPES = {
+  aset: 'asset',
+  liabilitas: 'liability',
+  ekuitas: 'equity',
+  pendapatan: 'revenue',
+  biaya: 'expense',
+};
+const ACCOUNT_TYPES_REVERSE = Object.fromEntries(
+  Object.entries(ACCOUNT_TYPES).map(([local, remote]) => [remote, local]),
+);
+const SIDES = { debet: 'debit', kredit: 'credit' };
+const SIDES_REVERSE = { debit: 'debet', credit: 'kredit' };
+
+export function toDbAccountType(value) {
+  const key = String(value || '').toLowerCase();
+  return ACCOUNT_TYPES[key] || (Object.values(ACCOUNT_TYPES).includes(key) ? key : 'asset');
+}
+
+export function toLocalAccountType(value) {
+  const key = String(value || '').toLowerCase();
+  return ACCOUNT_TYPES_REVERSE[key] || key || 'aset';
+}
+
+export function toDbSide(value) {
+  const key = String(value || '').toLowerCase();
+  return SIDES[key] || (key === 'credit' ? 'credit' : 'debit');
+}
+
+export function toLocalSide(value) {
+  const key = String(value || '').toLowerCase();
+  return SIDES_REVERSE[key] || (key === 'kredit' ? 'kredit' : 'debet');
+}
+
+export function hasLocalSnapshotData(finance = {}, inventory = {}) {
+  const entries = Array.isArray(finance.entries) ? finance.entries.length : 0;
+  const customAccounts = Array.isArray(finance.accounts) ? finance.accounts.length : 0;
+  const openings = Object.keys(finance.openingBalances || {}).length;
+  const items = Array.isArray(inventory.items) ? inventory.items.length : 0;
+  const transactions = Array.isArray(inventory.transactions) ? inventory.transactions.length : 0;
+  return Boolean(entries || customAccounts || openings || items || transactions);
+}
+
 export function isUuid(value) {
   return UUID_RE.test(String(value || ''));
 }
@@ -117,10 +161,10 @@ function accountRow(account) {
     id: isUuid(account.id) && account.id ? account.id : uuidFor('account', code),
     account_code: code,
     account_name: String(account.name || ''),
-    account_type: String(account.type || 'aset'),
-    normal_balance: String(account.side || 'debet'),
+    account_type: toDbAccountType(account.type),
+    normal_balance: toDbSide(account.side),
     parent_id: null,
-    report_group: String(account.report || ''),
+    report_group: String(account.report || '') || null,
     is_active: true,
   };
 }
@@ -172,7 +216,7 @@ export function buildRemoteSnapshot({ finance = {}, inventory = {}, itemDefiniti
     entryRows.push({
       id,
       journal_number: ref,
-      transaction_date: String(entry.date || ''),
+      transaction_date: String(entry.date || '') || null,
       description: String(entry.description || ''),
       reference_number: ref,
       journal_type: 'general',
@@ -255,7 +299,7 @@ export function buildRemoteSnapshot({ finance = {}, inventory = {}, itemDefiniti
     movementRows.push({
       id: isUuid(transaction.id) && transaction.id ? transaction.id : uuidFor('inventory-movement', String(transaction.id)),
       inventory_id: inventoryId,
-      movement_date: String(transaction.date || ''),
+      movement_date: String(transaction.date || '') || null,
       movement_type: String(transaction.type) === 'out' ? 'out' : 'in',
       quantity: Number(transaction.quantity) || 0,
       description: String(transaction.note || reference || ''),
@@ -347,8 +391,8 @@ export function buildLocalSnapshot(rows = {}, builtinCodes = []) {
       .map((row) => ({
         code: String(row.account_code),
         name: String(row.account_name),
-        type: String(row.account_type || 'aset'),
-        side: String(row.normal_balance || 'debet'),
+        type: toLocalAccountType(row.account_type),
+        side: toLocalSide(row.normal_balance),
       })),
     deletedAccounts: accounts
       .filter((row) => row.is_active === false)
