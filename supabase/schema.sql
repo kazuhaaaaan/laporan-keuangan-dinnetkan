@@ -1,36 +1,35 @@
--- Jalankan di Supabase SQL Editor.
--- Tabel ini menyimpan payload aplikasi sebagai JSON, sehingga struktur laporan
--- tetap fleksibel tanpa mengubah skema setiap kali ada field baru.
-
-create table if not exists public.app_state (
-  id text primary key,
-  payload jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.app_state enable row level security;
-
--- Mode demo/single-workspace: izinkan anon membaca dan menulis.
--- Untuk produksi yang lebih aman, ganti policy ini dengan policy berbasis auth.uid().
-drop policy if exists "app_state_select_all" on public.app_state;
-create policy "app_state_select_all"
-  on public.app_state for select
-  using (true);
-
-drop policy if exists "app_state_insert_all" on public.app_state;
-create policy "app_state_insert_all"
-  on public.app_state for insert
-  with check (true);
-
-drop policy if exists "app_state_update_all" on public.app_state;
-create policy "app_state_update_all"
-  on public.app_state for update
-  using (true)
-  with check (true);
-
-grant usage on schema public to anon, authenticated;
-grant select, insert, update on public.app_state to anon, authenticated;
-
--- Baris yang dipakai aplikasi:
---   id = 'finance'    -> state keuangan (entries, openingBalances, accounts, deletedAccounts)
---   id = 'inventory'  -> state inventaris (items, transactions, depreciations)
+-- CATATAN: file ini bukan DDL pembuatan tabel.
+-- Skema sudah dibuat di project Supabase gnuqhaugrylgmebenkku dan TIDAK boleh
+-- dibuat ulang oleh aplikasi. Berikut ringkasan hasil inspeksi OpenAPI
+-- (PostgREST 14.18) yang dipakai supabase-mapper.js.
+--
+-- Tabel yang dipakai (semua ada, dapat dibaca dengan anon/publishable key):
+--   profiles(id uuid PK, full_name text, email text, role text default 'staff',
+--            created_at timestamptz, updated_at timestamptz)
+--   accounts(id uuid PK, account_code varchar, account_name text, account_type text,
+--            normal_balance text, parent_id uuid FK accounts.id, report_group text,
+--            is_active bool default true, created_at timestamptz)
+--   auxiliary_accounts(id uuid PK, auxiliary_code varchar, auxiliary_name text,
+--            auxiliary_type text, description text, is_active bool, created_at timestamptz)
+--   opening_balances(id uuid PK, account_id uuid FK accounts.id, fiscal_year int,
+--            debit numeric default 0, credit numeric default 0, created_at, updated_at)
+--   fiscal_periods(id uuid PK, period_name varchar, month int, year int,
+--            start_date date, end_date date, is_closed bool default false, created_at)
+--   journal_entries(id uuid PK, journal_number varchar, transaction_date date,
+--            description text, reference_number varchar, journal_type text default 'general',
+--            fiscal_year int, period_id uuid FK fiscal_periods.id,
+--            status text default 'draft', created_by uuid FK profiles.id,
+--            created_at, updated_at)
+--   journal_lines(id uuid PK, journal_entry_id uuid FK journal_entries.id,
+--            account_id uuid FK accounts.id, auxiliary_account_id uuid FK auxiliary_accounts.id,
+--            line_number int, description text, debit numeric default 0,
+--            credit numeric default 0, created_at)
+--   inventory(id uuid PK, item_code varchar, item_name text, category text,
+--            acquisition_date date, acquisition_cost numeric default 0, quantity numeric default 0,
+--            unit varchar, condition text, description text, created_at)
+--   inventory_movements(id uuid PK, inventory_id uuid FK inventory.id,
+--            movement_date date, movement_type text, quantity numeric, description text,
+--            journal_entry_id uuid FK journal_entries.id, created_at)
+--
+-- Rekomendasi RLS berbasis auth.uid() ada di supabase/policies.sql.
+-- Jangan jalankan file itu tanpa meninjau policy yang sudah ada di project.

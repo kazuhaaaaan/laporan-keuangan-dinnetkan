@@ -1,6 +1,6 @@
 # CHANGELOG
 
-Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repository Git dan tidak memakai package manager; bagian “Unreleased” di bawah adalah status lokal terkini.
+Perubahan awal tercatat **2026-11-25**; integrasi Supabase normalized dan build Vite tercatat **2026-11-26**. Proyek tetap static HTML/CSS/JS, tetapi kini memakai npm/Vite hanya untuk dependency Supabase dan build.
 
 ## [Unreleased] — 2026-11-25
 
@@ -12,7 +12,7 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 - Kolom akun pada Input Jurnal tetap berupa daftar pilihan, namun daftarnya bisa dicari dengan mengetik kode atau nama (combobox dengan `role="listbox"`).
 - Barang inventaris baru bisa dibuat langsung dari Input Jurnal dan langsung tersedia untuk mutasi serta halaman Inventaris.
 - Setiap jurnal yang disimpan otomatis tampil di **Jurnal Umum**, **Neraca Jalur**, **Laba Rugi**, dan **Neraca**.
-- Integrasi **Supabase** opsional: `supabase-config.js` + `supabase-sync.js` menyinkronkan state keuangan dan inventaris ke tabel `app_state` lewat REST; tombol **Tarik/Kirim** tersedia di sidebar. Panduan ada di `SUPABASE.md` dan SQL di `supabase/schema.sql`.
+- Integrasi **Supabase** penuh ke 9 tabel yang sudah ada (`profiles`, `accounts`, `auxiliary_accounts`, `opening_balances`, `fiscal_periods`, `journal_entries`, `journal_lines`, `inventory`, `inventory_movements`). `supabase-client.js` adalah client terpusat; `supabase-mapper.js` menerjemahkan state lokal ↔ baris DB dengan UUID deterministik. Auth (login/logout/sesi/role admin·staff·viewer), tombol **Tarik/Kirim**, loading/error/empty state, dan hapus draft tersedia. Panduan ada di `SUPABASE.md`.
 - Manajemen kode akun di web: tambah akun kustom, hapus akun yang belum dipakai, dan sinkronisasi ke laporan serta cadangan JSON.
 - `data.js`
   - `getInventoryItemDefinitions()` menggabungkan barang bawaan dan barang lokal dari localStorage sehingga mutasi jurnal mengenali barang yang dibuat dari Input Jurnal; ID barang lokal dipertahankan agar transaksi turunan tampil di halaman Inventaris.
@@ -81,7 +81,8 @@ Semua perubahan tercatat pada tanggal **2026-11-25**. Proyek ini bukan repositor
 
 - `node --check data.js`, `node --check app.js`, `node --check inventaris/app.js` → OK.
 - `node tools/parity-test.js` → `PASS 15`, `DEVIATION 1`, `BLOCKED 5`, `SKIP 2`, `FAIL 0`.
-- `node tools/smoke-test.js` → 78 dari 78 pemeriksaan PASS (ID tiap halaman, redirect, combobox akun, skrip/config Supabase, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test).
+- `node tools/smoke-test.js` → 88 dari 88 pemeriksaan PASS (ID tiap halaman, redirect, combobox akun, env/client/auth Supabase, mapping 9 tabel, tautan lintas halaman, alur jurnal ke seluruh laporan, keterkaitan barang baru dengan mutasi inventaris, dan unit test mapper).
+- `npm run build` → sukses; `dist/` berisi HTML, bundle Supabase, `data.js`, `app.js`, `inventaris/app.js`, dan `CNAME`. Konfigurasi env tersemat dari `.env.local`, placeholder tidak ada.
 
 ## Catatan versi
 

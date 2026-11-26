@@ -94,22 +94,70 @@ check(
 );
 
 const supabaseConfig = fs.readFileSync(path.join(ROOT, 'supabase-config.js'), 'utf8');
-const supabaseSchema = fs.readFileSync(path.join(ROOT, 'supabase/schema.sql'), 'utf8');
+const supabaseClient = fs.readFileSync(path.join(ROOT, 'supabase-client.js'), 'utf8');
+const supabaseSync = fs.readFileSync(path.join(ROOT, 'supabase-sync.js'), 'utf8');
+const supabaseMapper = fs.readFileSync(path.join(ROOT, 'supabase-mapper.js'), 'utf8');
+const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const gitignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
 check(
-  'supabase: konfigurasi dan skema SQL',
-  supabaseConfig.includes('window.DINETKAN_SUPABASE')
-    && supabaseConfig.includes('YOUR_PROJECT.supabase.co')
-    && supabaseSchema.includes('create table if not exists public.app_state')
-    && supabaseSchema.includes('enable row level security'),
-  'template config dan tabel app_state tersedia',
+  'supabase: konfigurasi memakai environment variable Vite',
+  supabaseConfig.includes('import.meta.env.VITE_SUPABASE_URL')
+    && supabaseConfig.includes('import.meta.env.VITE_SUPABASE_ANON_KEY')
+    && supabaseConfig.includes('window.DINETKAN_SUPABASE')
+    && !supabaseConfig.includes('service_role'),
+  'VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY',
+);
+check(
+  'supabase: client terpusat dan aman',
+  supabaseClient.includes("from '@supabase/supabase-js'")
+    && supabaseClient.includes('createClient(')
+    && !supabaseClient.includes('service_role')
+    && !supabaseClient.includes('sb_secret_'),
+  'createClient dengan anon key saja',
+);
+check(
+  'supabase: dependency dan script tersedia',
+  Boolean(packageJson.dependencies?.['@supabase/supabase-js'])
+    && Boolean(packageJson.devDependencies?.vite)
+    && Boolean(packageJson.scripts?.build),
+  `@supabase/supabase-js ${packageJson.dependencies?.['@supabase/supabase-js']}, vite ${packageJson.devDependencies?.vite}`,
+);
+check(
+  'supabase: .env.local tidak ikut ter-commit',
+  gitignore.includes('.env.local') && fs.existsSync(path.join(ROOT, '.env.example')),
+  '.env.example tersedia, .env.local diabaikan',
+);
+check(
+  'supabase: 9 tabel dipetakan',
+  ['profiles', 'accounts', 'auxiliary_accounts', 'opening_balances', 'fiscal_periods', 'journal_entries', 'journal_lines', 'inventory', 'inventory_movements']
+    .every((table) => supabaseMapper.includes(`'${table}'`)),
+  'mapping mengikuti skema aktual Supabase',
+);
+check(
+  'supabase: auth dan CRUD tersedia',
+  supabaseSync.includes('signInWithPassword')
+    && supabaseSync.includes('auth.signOut')
+    && supabaseSync.includes('onAuthStateChange')
+    && supabaseSync.includes('deleteDraftJournal')
+    && supabaseSync.includes('.upsert(')
+    && supabaseSync.includes('.delete()'),
+  'login, logout, sesi, draft delete, upsert',
+);
+check(
+  'supabase: event refresh sampai ke halaman',
+  supabaseSync.includes("document.dispatchEvent(new CustomEvent(name")
+    && fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8').includes("document.addEventListener('dinetkan:remote-updated'"),
+  'event dispatch di document, bukan window',
 );
 
 const missingSyncScripts = allPages.filter((page) => {
   const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
-  return !html.includes('supabase-config.js') || !html.includes('supabase-sync.js');
+  const prefix = page.startsWith('inventaris/') ? '../' : '';
+  return !html.includes(`type="module" src="${prefix}supabase-config.js"`)
+    || !html.includes(`type="module" src="${prefix}supabase-sync.js"`);
 });
 check(
-  'supabase: skrip termuat di semua halaman',
+  'supabase: skrip module termuat di semua halaman',
   missingSyncScripts.length === 0,
   missingSyncScripts.length ? `hilang di ${missingSyncScripts.join(', ')}` : `${allPages.length} halaman`,
 );
@@ -264,4 +312,65 @@ function createEngine(storage = {}) {
   check('hapus akun belum terpakai', removed === true && !stillListed, `removed=${removed}, masih ada=${stillListed}`);
 }
 
-if (failed) process.exitCode = 1;
+async function checkSupabaseMapper() {
+  const mapper = await import('../supabase-mapper.js');
+  const accounts = [{ code: '1.1.01', name: 'KAS', type: 'aset', side: 'debet', report: 'neraca', sourceCode: '40179.0' }];
+  const finance = {
+    entries: [{
+      id: 'JRN-UJI',
+      ref: 'JRN-UJI',
+      date: '2025-01-15',
+      description: 'Jurnal uji',
+      lines: [
+        { code: '1.1.01', debit: 100, kredit: 0, mutation: { item: 'BRG-001', type: 'in', quantity: 2 } },
+        { code: '40179.0', debit: 0, kredit: 100 },
+      ],
+    }],
+    openingBalances: { '1.1.01': { debit: 50, kredit: 0 } },
+    accounts: [],
+    deletedAccounts: [],
+  };
+  const inventory = {
+    items: [{ id: 'item-local-1', code: 'BRG-001', name: 'Router', price: 1250000, initialStock: 0 }],
+    transactions: [{ id: 'mut-1', date: '2025-01-16', itemId: 'item-local-1', type: 'out', quantity: 1, note: 'dipakai' }],
+    depreciations: [],
+  };
+  const snapshot = mapper.buildRemoteSnapshot({ finance, inventory, itemDefinitions: inventory.items, accounts });
+  const debit = snapshot.journal_lines.reduce((total, line) => total + line.debit, 0);
+  const credit = snapshot.journal_lines.reduce((total, line) => total + line.credit, 0);
+  check(
+    'mapper: jurnal remote seimbang dan berstatus posted',
+    snapshot.journal_entries.length === 1
+      && snapshot.journal_entries[0].status === 'posted'
+      && snapshot.journal_lines.length === 2
+      && debit === credit
+      && snapshot.journal_lines.some((line) => line.auxiliary_account_id),
+    `debet=${debit}, kredit=${credit}, baris=${snapshot.journal_lines.length}`,
+  );
+  check(
+    'mapper: mutasi jurnal dikodekan di journal_lines',
+    snapshot.journal_lines.some((line) => /\[mutasi:BRG-001:in:2\]/.test(line.description)),
+    'deskripsi baris menyimpan mutation',
+  );
+  const local = mapper.buildLocalSnapshot(snapshot, []);
+  check(
+    'mapper: data remote kembali ke state lokal',
+    local.finance.entries.length === 1
+      && local.finance.entries[0].lines.length === 2
+      && local.finance.entries[0].lines[0].mutation?.item === 'BRG-001'
+      && local.inventory.transactions.length === 1
+      && local.inventory.items.length === 1,
+    `entries=${local.finance.entries.length}, mutasi=${local.inventory.transactions.length}`,
+  );
+  check(
+    'mapper: UUID deterministik untuk upsert',
+    mapper.uuidFor('account', '1.1.01') === mapper.uuidFor('account', '1.1.01')
+      && mapper.isUuid(mapper.uuidFor('account', '1.1.01')),
+    'id stabil sehingga tidak ada duplikat',
+  );
+}
+
+(async () => {
+  await checkSupabaseMapper();
+  if (failed) process.exitCode = 1;
+})();

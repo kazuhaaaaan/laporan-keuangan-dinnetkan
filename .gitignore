@@ -9,6 +9,7 @@ npm-debug.log*
 
 # Node / Dependencies
 node_modules/
+dist/
 
 # IDE / Editor
 .vscode/
@@ -17,3 +18,9 @@ node_modules/
 # Local data & temp
 *.tmp
 *.bak
+
+# Environment / secrets
+.env
+.env.local
+.env.*
+!.env.example

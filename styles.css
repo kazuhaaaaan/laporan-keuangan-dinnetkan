@@ -1151,6 +1151,70 @@ h3 {
   cursor: not-allowed;
 }
 
+.auth-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.auth-form .btn {
+  width: 100%;
+}
+
+.auth-user {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.auth-user button {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.auth-gate {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.auth-card {
+  width: min(100%, 380px);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+}
+
+.auth-card h2 {
+  margin: 6px 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.auth-card .subtitle {
+  margin-bottom: 16px;
+}
+
+body.auth-locked .main {
+  display: none;
+}
+
 /* Data Tables */
 .table-summary {
   display: flex;
